@@ -1,0 +1,3 @@
+raspistill -t 0 -w 1024 -h 768 -0 image.jpg
+
+tesseract image.jpg stdout
