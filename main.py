@@ -2,17 +2,33 @@ import asyncio
 import logging
 import random
 import time
+import re
 
 from nextion import Nextion, EventType
+from smbus2 import SMBus, i2c_msg
 
-password = 'l'
+addr = 0x70
+password = {
+    "room01": 1,
+    "room02": 2,
+    "room03": 3,
+    "room04": 4,
+    "room05": 5,
+    "room06": 6,
+    "room07": 7,
+    "room08": 8,
+    "room09": 9
+};
 
 async def checkKey():
     try:
-        key = await client.get('t0.txt')
-        key = key[1:]
-        if (key.isdigit()):
+        bus = SMBus(1)
+        getkey = await client.get('t0.txt')
+        key = re.sub(' ', '', getkey)
+        if (len(key) == 6 and key in password):
             print('True')
+            numRoom = password.get(key)
+            bus.i2c_rdwr(i2c_msg.write(addr, [numRoom]))
             await client.command('page 4')
             await asyncio.sleep(0.3)
             for i in range(10, 0, -1):
@@ -20,7 +36,7 @@ async def checkKey():
                 await asyncio.sleep(1)
             await client.command('page 6')
             await asyncio.sleep(0.3)
-            await client.set('n0.val', int(key))
+            await client.set('n0.val', numRoom)
             for i in range(10, 0, -1):
                 await client.set('p4_n0.val', i)
                 if (await client.get('dp') == 1):
