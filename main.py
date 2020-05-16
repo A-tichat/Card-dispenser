@@ -1,23 +1,51 @@
 import asyncio
 import logging
 import random
-import time
+import time, threading
 import re
 
 from nextion import Nextion, EventType
 from smbus2 import SMBus, i2c_msg
 
-addr = 0x70
+addr = list(range(0x46,0x4c))
 password = {
+    "room00": 0,
     "room01": 1,
-    "room02": 2,
+    "room02": 2, 
     "room03": 3,
     "room04": 4,
     "room05": 5,
-    "room06": 6,
+    "room06": 6, 
     "room07": 7,
     "room08": 8,
-    "room09": 9
+    "room09": 9,
+    "room10": 10,
+    "room11": 11, 
+    "room12": 12,
+    "room13": 13,
+    "room14": 14,
+    "room15": 15, 
+    "room16": 16,
+    "room17": 17,
+    "room18": 18,
+    "room19": 19,
+    "room20": 20, 
+    "room21": 21,
+    "room22": 22,
+    "room23": 23,
+    "room24": 24, 
+    "room25": 25,
+    "room26": 26,
+    "room27": 27,
+    "room28": 28,
+    "room29": 29, 
+    "room30": 30,
+    "room31": 31,
+    "room32": 32,
+    "room33": 33, 
+    "room34": 34,
+    "room35": 35,
+    "room36": 36
 };
 
 async def checkKey():
@@ -27,13 +55,18 @@ async def checkKey():
         key = re.sub(' ', '', getkey)
         if (len(key) == 6 and key in password):
             print('True')
-            numRoom = password.get(key)
-            bus.i2c_rdwr(i2c_msg.write(addr, [numRoom]))
+            Room = password.get(key)
+            address = addr[int(Room/18)]
+            numRoom = Room%18
+            bus.i2c_rdwr(i2c_msg.write(address, [numRoom]))
+            print("---------------------------------------- Room Number is", numRoom)
+            #Go to scan passport page
             await client.command('page 4')
             await asyncio.sleep(0.3)
             for i in range(10, 0, -1):
                 await client.set('p4_n0.val', i)
                 await asyncio.sleep(1)
+            #Go to show room number page
             await client.command('page 6')
             await asyncio.sleep(0.3)
             await client.set('n0.val', numRoom)
@@ -67,7 +100,7 @@ async def caplock():
         await client.set('t0.txt',temp)
     except NameError:
         print('caplock function: ',NameError)
-    
+
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:

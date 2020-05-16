@@ -1,48 +1,53 @@
 from PIL import Image
-from Error_checker import mrz
+from Error_checker import passportScan
 from picamera import PiCamera
 from time import sleep
+import re
 import time
 import pytesseract
+from datetime import datetime
 
-def scanMrzWithPi():
-    global p1
-    while True:
+def scanMrzWithPi(pathImg = "Pictures/"+datetime.today().strftime('%Y%m%d')+".jpg", timeout = 180):
+    camera = PiCamera()
+    camera.resolution = (1024, 768)
+    camera.start_preview()
+    timein = datetime.now()
+    while True: 
         try:
-            #camera = PiCamera()
-            #camera.start_preview()
-            #sleep(3)
-            #camera.capture('temp.jpg')
-            #camera.stop_preview()
-            #camera.close() 
-            img = Image.open('i.jpg')
-            #width, height = img.size
-            #area = (0, height*2/3, width, height-10)
-            #img = img.crop(area)
-            #img.save("crop_pic.jpg")
+            camera.capture(pathImg)
+            img = Image.open(pathImg)
             f = pytesseract.image_to_string(img)
             code=""
-            d=""
             for d in f.splitlines():
-                print d
+                #line of Machine Readable Zone
+                print("Data:", d)
                 if '<' in d:
-                    while ' 'in d:
-                        stlen = d.find(' ')
-                        d=d[:stlen]+d[stlen+1:]
-                    code+=d[:44]
+                    #remove space for error scan
+                    code+=re.sub(' ', '', d)[:44]
                     code+='\n'
-            print(code)
-            p1 = mrz(code)
+            #print("ourcode :", code)
+            if ((datetime.now()-timein).total_seconds() >= timeout):
+                print((datetime.now()-timein).total_seconds())
+                break
+            p1 = passportScan(code)
+            
+            #if scan pass
             p1.printResult()
             print('\n')
             #print(p1.__dict__)
             break
+
+        #else scan failed jump to except error and try again
         except ValueError as err:
             print(err)
-            f.close()
-            pass
-
-        print ("retry")
-    f.close()
+            print ("------------------------------------------retry-----------------------------------------")
+            continue
+        except InterruptExecution:
+            break
+    #out of while loop
+    camera.stop_preview()
+    camera.close() 
     print("finish!")
-    return p1
+
+class InterruptExecution (Exception):
+    pass
