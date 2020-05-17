@@ -1,9 +1,11 @@
 import asyncio, logging
 import random, time, threading, re
 import urllib.request
-
+from picamera import PiCamera
+from mrzScanWithABBYY import scanMrzWithPi
 from nextion import Nextion, EventType
 from smbus2 import SMBus, i2c_msg
+
 
 addr = list(range(0x46,0x4c))
 password = {
@@ -62,41 +64,28 @@ async def checkKey():
             await client.command('page shRoom')
             await asyncio.sleep(0.3)
             await client.set('n0.val', numRoom)
-            for i in range(10, 0, -1):
-                await client.set('p4_n0.val', i)
-                if (await client.get('dp') == 1):
-                    print('back is press')
-                    break
-                elif (i == 1):
-                    await asyncio.sleep(1)
-                    await client.command('page 1')
-                    break
-                await asyncio.sleep(1)
         else:
             print('PIN-code not correct')
             await client.set('t0.txt', ' ')
+            await client.command('page PinWrong')
     except NameError:
         print('checkKey function: ', NameError)
 
-async def caplock():
+async def scanPassport():
+    global client
+    pathfile = "Pictures/temp.jpg"
+    camera = PiCamera()
+    camera.resolution = (1024, 768)
+    #camera.start_preview()
     try:
-        temp = await client.get('t0.txt')
-        print(temp)
-        if (await client.get('dp') == 2):
-            await client.command('page 3')
-        elif (await client.get('dp') == 3):
-            await client.command('page 2')
-        else:
-            print('Error: duplicate key ID 38 or 40')
-        await asyncio.sleep(0.3)
-        await client.set('t0.txt',temp)
-    except NameError:
-        print('caplock function: ',NameError)
-
-async def reset():
-    await client.command("rest")
-    time.sleep(100)
-
+        camera.capture(pathfile)
+        await client.set('p5_t0.txt', "Waiting..")
+        scanMrzWithPi(pathfile, 60)
+    except :
+        scanPassport()
+    #camera.stop_preview()
+    camera.close()
+    print("Succes!!")
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:
@@ -104,8 +93,8 @@ def event_handler(type_, data):
     if type_ == EventType.TOUCH:
         if data.component_id == 42:
             asyncio.create_task(checkKey())
-        elif data.component_id == 40 or data.component_id == 38:
-            asyncio.create_task(caplock())
+        elif (data.page_id == 4 and data.component_id == 4):
+            asyncio.create_task(scanPassport())
     logging.info('Data: '+str(data))
 
 def connect(host='http://google.com'):
@@ -128,8 +117,8 @@ async def run():
     await asyncio.sleep(1.5)
 
     if connect():
-        if (await client.get('dp') == 1):
-            await client.command('page 6')
+        if (await client.get('dp') != 1):
+            await client.command('page stb_page')
     else: #if connect to internet fail!
         await client.command('page pageWrong')
 

@@ -27,35 +27,24 @@ def mrz_scan(source_file, APPID, PWD):
 
 
 def scanMrzWithPi(pathImg = "Pictures/"+datetime.today().strftime('%Y%m%d')+".jpg", timeout = 180):
-    #camera = PiCamera()
-    #camera.resolution = (1024, 768)
-    #camera.start_preview()
-    while(input("Type 1 to run program: ") == '1'): 
-        try:
-            #camera.capture(pathImg)
-            
-            APPID = 'ed939c91-9ca3-4b49-be87-f7f666d49c09'
-            PWD = 'pH7DLeVLNwPEzEVh4lqTxMqW'
-            code = mrz_scan(pathImg, APPID, PWD)
-            p1 = passportScan(code)
-            
-            #if scan pass
-            p1.printResult()
-            print('\n')
-            #print(p1.__dict__)
-            break
+    try:
+        
+        APPID = 'ed939c91-9ca3-4b49-be87-f7f666d49c09'
+        PWD = 'pH7DLeVLNwPEzEVh4lqTxMqW'
+        code = mrz_scan(pathImg, APPID, PWD)
+        p1 = passportScan(code)
+        
+        #if scan pass
+        p1.printResult()
+        #print(p1.__dict__)
+        return p1
 
-        #else scan failed jump to except error and try again
-        except ValueError as err:
-            print(err)
-            print ("------------------------------------------retry-----------------------------")
-            continue
-        except InterruptExecution:
-            break
-    #out of while loop
-    #camera.stop_preview()
-    #camera.close() 
-    print("finish!")
+    #else scan failed jump to except error
+    except ValueError as err:
+        print(err)
+        return
+    except InterruptExecution:
+        return
 
 class InterruptExecution (Exception):
     pass
