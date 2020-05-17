@@ -1,8 +1,6 @@
-import asyncio
-import logging
-import random
-import time, threading
-import re
+import asyncio, logging
+import random, time, threading, re
+import urllib.request
 
 from nextion import Nextion, EventType
 from smbus2 import SMBus, i2c_msg
@@ -60,14 +58,8 @@ async def checkKey():
             numRoom = Room%18
             bus.i2c_rdwr(i2c_msg.write(address, [numRoom]))
             print("---------------------------------------- Room Number is", numRoom)
-            #Go to scan passport page
-            await client.command('page 4')
-            await asyncio.sleep(0.3)
-            for i in range(10, 0, -1):
-                await client.set('p4_n0.val', i)
-                await asyncio.sleep(1)
             #Go to show room number page
-            await client.command('page 6')
+            await client.command('page shRoom')
             await asyncio.sleep(0.3)
             await client.set('n0.val', numRoom)
             for i in range(10, 0, -1):
@@ -81,7 +73,7 @@ async def checkKey():
                     break
                 await asyncio.sleep(1)
         else:
-            print('False')
+            print('PIN-code not correct')
             await client.set('t0.txt', ' ')
     except NameError:
         print('checkKey function: ', NameError)
@@ -101,16 +93,27 @@ async def caplock():
     except NameError:
         print('caplock function: ',NameError)
 
+async def reset():
+    await client.command("rest")
+    time.sleep(100)
+
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:
         print('We have booted up!')
-    elif type_ == EventType.TOUCH:
+    if type_ == EventType.TOUCH:
         if data.component_id == 42:
             asyncio.create_task(checkKey())
         elif data.component_id == 40 or data.component_id == 38:
             asyncio.create_task(caplock())
     logging.info('Data: '+str(data))
+
+def connect(host='http://google.com'):
+    try:
+        urllib.request.urlopen(host) #Python 3.x
+        return True
+    except:
+        return False
 
 async def run():
     global client
@@ -124,8 +127,11 @@ async def run():
     await client.command('page 0')
     await asyncio.sleep(1.5)
 
-    if (await client.get('dp') != 1):
-        await client.command('page 1')
+    if connect():
+        if (await client.get('dp') == 1):
+            await client.command('page 6')
+    else: #if connect to internet fail!
+        await client.command('page pageWrong')
 
     print('finished')
 
