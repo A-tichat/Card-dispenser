@@ -1,97 +1,81 @@
 import asyncio, logging
 import random, time, threading, re
 import urllib.request
+import key_mysql
+from Error_checker import passportScan
 from picamera import PiCamera
 from mrzScanWithABBYY import scanMrzWithPi
 from nextion import Nextion, EventType
 from smbus2 import SMBus, i2c_msg
+from mysql.connector import Error
 
 
-addr = list(range(0x46,0x4c))
-password = {
-    "room00": 0,
-    "room01": 1,
-    "room02": 2, 
-    "room03": 3,
-    "room04": 4,
-    "room05": 5,
-    "room06": 6, 
-    "room07": 7,
-    "room08": 8,
-    "room09": 9,
-    "room10": 10,
-    "room11": 11, 
-    "room12": 12,
-    "room13": 13,
-    "room14": 14,
-    "room15": 15, 
-    "room16": 16,
-    "room17": 17,
-    "room18": 18,
-    "room19": 19,
-    "room20": 20, 
-    "room21": 21,
-    "room22": 22,
-    "room23": 23,
-    "room24": 24, 
-    "room25": 25,
-    "room26": 26,
-    "room27": 27,
-    "room28": 28,
-    "room29": 29, 
-    "room30": 30,
-    "room31": 31,
-    "room32": 32,
-    "room33": 33, 
-    "room34": 34,
-    "room35": 35,
-    "room36": 36
-};
+def getAddress(slot):
+    switcher = {
+            0:0x46,
+            1:0x47,
+            2:0x48,
+            3:0x49,
+            4:0x4A,
+            5:0x4B
+            }
+    return switcher.get(slot, None)
 
 async def checkKey():
     try:
         bus = SMBus(1)
         getkey = await client.get('t0.txt')
-        key = re.sub(' ', '', getkey)
-        if (len(key) == 6 and key in password):
+        PIN = re.sub(' ', '', getkey)
+        rooms = key_mysql.getroom_number(PIN)
+        if (rooms != None):
             print('True')
-            Room = password.get(key)
-            address = addr[int(Room/18)]
-            numRoom = Room%18
-            bus.i2c_rdwr(i2c_msg.write(address, [numRoom]))
-            print("---------------------------------------- Room Number is", numRoom)
+            prev_slot = 0
+            for room in rooms:
+                slot = int(room[0]/22)
+                if (slot>prev_slot):
+                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+                time.sleep(0.01)
+                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
+                print("---------------------------------------- Room Number is", room[1])
+                prev_slot = slot
             #Go to show room number page
             await client.command('page shRoom')
-            await asyncio.sleep(0.3)
-            await client.set('n0.val', numRoom)
+            key_mysql.setkeylog(PIN)
         else:
             print('PIN-code not correct')
-            await client.set('t0.txt', ' ')
             await client.command('page PinWrong')
     except NameError:
         print('checkKey function: ', NameError)
 
 async def scanPassport():
     global client
-    pathfile = "Pictures/temp.jpg"
-    camera = PiCamera()
-    camera.resolution = (1024, 768)
+    pathfile = "Pictures/0.jpg"
+    #camera = PiCamera()
+    #camera.resolution = (1024, 768)
     #camera.start_preview()
     try:
-        camera.capture(pathfile)
-        await client.set('p5_t0.txt', "Waiting..")
-        scanMrzWithPi(pathfile, 60)
+        #camera.capture(pathfile)
+        #await client.command('tm0.en=0')
+        await asyncio.sleep(2)
+        await client.set('p5_t1.txt', "Waiting..")
+        data = scanMrzWithPi(pathfile, 60)
+        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: '+data.name+'"')
+        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
+        await client.command('xstr 200,260,400,30,1,BLACK,WHITE,0,0,1,"Passport number: '+data.passportNum.replace("<","")+'"')
+        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+data.personalNum.replace("<","")+'"')
+        key_mysql.getroomByMRZ(data.personalNum.replace('<',''))
     except :
-        scanPassport()
+        #await scanPassport()
+        pass
     #camera.stop_preview()
-    camera.close()
+    #camera.close()
     print("Succes!!")
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:
         print('We have booted up!')
     if type_ == EventType.TOUCH:
-        if data.component_id == 42:
+        if (data.page_id==3 and data.component_id == 42 or data.page_id==2 and data.component_id==41):
             asyncio.create_task(checkKey())
         elif (data.page_id == 4 and data.component_id == 4):
             asyncio.create_task(scanPassport())
@@ -125,12 +109,20 @@ async def run():
     print('finished')
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        level=logging.DEBUG,
-        handlers=[
-            logging.StreamHandler()
-        ])
-    loop = asyncio.get_event_loop()
-    asyncio.ensure_future(run())
-    loop.run_forever()
+    try:
+        key_mysql.servInit()
+        logging.basicConfig(
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            level=logging.DEBUG,
+            handlers=[
+                logging.StreamHandler()
+            ])
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(run())
+        loop.run_forever()
+    except Error as e:
+        print("Error while connected to MySQL", e)
+    finally:
+        key_mysql.servClose()
+        print("MySQL connection is closed")
+

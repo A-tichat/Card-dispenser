@@ -1,7 +1,4 @@
-from PIL import Image
 from Error_checker import passportScan
-from picamera import PiCamera
-from time import sleep
 import os, re, time, requests
 from datetime import datetime
 from ABBYY import CloudOCR
@@ -13,7 +10,7 @@ def mrz_scan(source_file, APPID, PWD):
     ocr_engine = CloudOCR(APPID, PWD)
     input_file = open(source_file, 'rb')
     post_file = {input_file.name: input_file}
-    print("Waiting...")
+    #print("Waiting...")
     result = ocr_engine.process_and_download(post_file, exportFormat='txt', language='English')
     mrz_code = ""
     f= result['txt'].read().decode("utf-8")
