@@ -1,3 +1,9 @@
-raspistill -t 0 -w 1024 -h 768 -0 image.jpg
+คำสั่งถ่ายรูป -t คือ เวลาโชว์ถ้าใส่ 0 คือโชว์ตลอดจนกว่าจะออก(ctrl c)
+	-w กว้าง -h สูง -o ชื่อไฟล์
+raspistill -t 0 -w 1024 -h 768 -o image.jpg
 
+คำสั่งอ่านรูป 	       ใส่ชื่อรูปvvv
 tesseract image.jpg stdout
+
+สั่งจอ
+python3 main.py
