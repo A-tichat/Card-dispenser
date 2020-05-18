@@ -23,6 +23,7 @@ def getAddress(slot):
 
 async def checkKey():
     try:
+        await client.command('page waiting_page')
         bus = SMBus(1)
         getkey = await client.get('t0.txt')
         PIN = re.sub(' ', '', getkey)
@@ -63,7 +64,10 @@ async def scanPassport():
         await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
         await client.command('xstr 200,260,400,30,1,BLACK,WHITE,0,0,1,"Passport number: '+data.passportNum.replace("<","")+'"')
         await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+data.personalNum.replace("<","")+'"')
-        key_mysql.getroomByMRZ(data.personalNum.replace('<',''))
+        rooms = key_mysql.getroomByMRZ(data.personalNum.replace('<',''))
+        if rooms:
+            for room in rooms:
+                print(room, end=" ")
     except :
         #await scanPassport()
         pass
