@@ -1,14 +1,17 @@
-import asyncio, logging
+import asyncio, logging, os
 import random, time, threading, re
 import urllib.request
-import key_mysql
-from Error_checker import passportScan
+import pytesseract
 from picamera import PiCamera
-from mrzScanWithABBYY import scanMrzWithPi
+from PIL import Image
 from nextion import Nextion, EventType
 from smbus2 import SMBus, i2c_msg
 from mysql.connector import Error
+from datetime import datetime
 
+import key_mysql 
+from ManageFile import getFilePath
+from mrzScanWithABBYY import scanMrzWithPi
 
 def getAddress(slot):
     switcher = {
@@ -23,12 +26,16 @@ def getAddress(slot):
 
 async def checkKey():
     try:
-        await client.command('page waiting_page')
         bus = SMBus(1)
         getkey = await client.get('t0.txt')
+        await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
-        rooms = key_mysql.getroom_number(PIN)
-        if (rooms != None):
+        if connext():
+            rooms = key_mysql.getroom_number(PIN)
+        else: #if connect to internet fail!
+            await client.command('page pageWrong')
+
+        if rooms:
             print('True')
             prev_slot = 0
             for room in rooms:
@@ -39,6 +46,7 @@ async def checkKey():
                 bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
                 print("---------------------------------------- Room Number is", room[1])
                 prev_slot = slot
+            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
             #Go to show room number page
             await client.command('page shRoom')
             key_mysql.setkeylog(PIN)
@@ -49,31 +57,60 @@ async def checkKey():
         print('checkKey function: ', NameError)
 
 async def scanPassport():
-    global client
-    pathfile = "Pictures/0.jpg"
-    #camera = PiCamera()
-    #camera.resolution = (1024, 768)
+    pathfile = getFilePath()
+    camera = PiCamera()
+    camera.resolution = (1024, 768)
     #camera.start_preview()
+    await checkPassport(pathfile)
+    #camera.stop_preview()
+    camera.close()
+    print("Succes!!")
+
+async def checkPassport(path = "Pictures/0.jpg"):
+    global client
     try:
-        #camera.capture(pathfile)
         #await client.command('tm0.en=0')
-        await asyncio.sleep(2)
+        noPP = True
+        while noPP:
+            camera.capture(path)
+            img = Image.open(path)
+            f = pytesseract.image_to_string(img)
+            for d in f.splitlines():
+                if '<' in d:
+                    noPP = False
+                    break
+        await client.set('p5_t0.txt', "Your passport in process")
         await client.set('p5_t1.txt', "Waiting..")
-        data = scanMrzWithPi(pathfile, 60)
+        data = scanMrzWithPi(path)
+        personNum = data.personalNum.replace("<", "")
         await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: '+data.name+'"')
         await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
-        await client.command('xstr 200,260,400,30,1,BLACK,WHITE,0,0,1,"Passport number: '+data.passportNum.replace("<","")+'"')
-        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+data.personalNum.replace("<","")+'"')
-        rooms = key_mysql.getroomByMRZ(data.personalNum.replace('<',''))
+        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+personNum+'"')
+        await client.command('page waitting_page')
+        rooms = key_mysql.getroomByMRZ(personNum)
         if rooms:
+            prev_slot = 0
             for room in rooms:
-                print(room, end=" ")
+                
+                #slot = int(room[0]/22)
+                #if (slot>prev_slot):
+                #    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+                #time.sleep(0.01)
+                #bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
+                print("---------------------------------------- Room Number is", room)
+                #prev_slot = slot
+            #bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+            #Go to show room number page
+            await client.command('page shRoom')
+            #key_mysql.setkeylog(PIN)
+        else:
+            print("Don't have room")
+            await client.command('page pageWrong')
+            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            await client.set('p6_tcount.txt', "This page will close in 10 seconds.")
     except :
-        #await scanPassport()
+        await checkPassport(path)
         pass
-    #camera.stop_preview()
-    #camera.close()
-    print("Succes!!")
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:

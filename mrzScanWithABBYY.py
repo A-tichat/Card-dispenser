@@ -23,7 +23,7 @@ def mrz_scan(source_file, APPID, PWD):
     return mrz_code
 
 
-def scanMrzWithPi(pathImg = "Pictures/"+datetime.today().strftime('%Y%m%d')+".jpg", timeout = 180):
+def scanMrzWithPi(pathImg = "Pictures/"+datetime.today().strftime('%Y%m%d')+".jpg"):
     try:
         
         APPID = 'ed939c91-9ca3-4b49-be87-f7f666d49c09'
