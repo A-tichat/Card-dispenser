@@ -26,11 +26,11 @@ def getAddress(slot):
 
 async def checkKey():
     try:
-        bus = SMBus(1)
+#        bus = SMBus(1)
         getkey = await client.get('t0.txt')
         await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
-        if connext():
+        if connect():
             rooms = key_mysql.getroom_number(PIN)
         else: #if connect to internet fail!
             await client.command('page pageWrong')
@@ -41,37 +41,40 @@ async def checkKey():
             for room in rooms:
                 slot = int(room[0]/22)
                 if (slot>prev_slot):
-                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+                    print("-10")
+#                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
                 time.sleep(0.01)
-                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
+                print(room[0])
+#                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
                 print("---------------------------------------- Room Number is", room[1])
                 prev_slot = slot
-            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+#            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
             #Go to show room number page
             await client.command('page shRoom')
             key_mysql.setkeylog(PIN)
         else:
             print('PIN-code not correct')
             await client.command('page PinWrong')
-    except NameError:
-        print('checkKey function: ', NameError)
+    except NameError as e:
+        print('checkKey function: ', e)
 
 async def scanPassport():
     pathfile = getFilePath()
     camera = PiCamera()
     camera.resolution = (1024, 768)
     #camera.start_preview()
-    await checkPassport(pathfile)
+    await checkPassport(pathfile, camera)
     #camera.stop_preview()
     camera.close()
-    print("Succes!!")
 
-async def checkPassport(path = "Pictures/0.jpg"):
+async def checkPassport(path, camera):
     global client
     try:
         #await client.command('tm0.en=0')
         noPP = True
         while noPP:
+            if (await client.get('dp') != 5):
+                raise NameError("CANCEL PRESS!")
             camera.capture(path)
             img = Image.open(path)
             f = pytesseract.image_to_string(img)
@@ -81,7 +84,10 @@ async def checkPassport(path = "Pictures/0.jpg"):
                     break
         await client.set('p5_t0.txt', "Your passport in process")
         await client.set('p5_t1.txt', "Waiting..")
-        data = scanMrzWithPi(path)
+        if connect():
+            data = scanMrzWithPi(path)
+        else: #if connect to internet fail!
+            await client.command('page pageWrong')
         personNum = data.personalNum.replace("<", "")
         await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: '+data.name+'"')
         await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
@@ -108,9 +114,10 @@ async def checkPassport(path = "Pictures/0.jpg"):
             await client.command('page pageWrong')
             await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
             await client.set('p6_tcount.txt', "This page will close in 10 seconds.")
-    except :
-        await checkPassport(path)
-        pass
+    except NameError as e:
+        print(e)
+    except ValueError :
+        await checkPassport(path, camera)
 
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:

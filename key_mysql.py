@@ -15,15 +15,16 @@ def servClose():
 def getroom_number(PIN):
     if (PIN=="" or ' ' in PIN):
         return None
-    cur.execute("""select b.slot, room_number
+    sqlCode = ("""select b.slot, room_number
             from kd_room as a inner join kd_keylogger as b on(a.slot=b.slot)
-            where keylog=%s""" % PIN)
+            where keylog='%s'""" % PIN)
+    cur.execute(sqlCode)
     return  cur.fetchall()
 
 def setkeylog(PIN):
     if (PIN=="" or ' ' in PIN):
         return None
-    cur.execute("update kd_keylogger set keylog=Null where keylog=%s" % PIN)
+    cur.execute("update kd_keylogger set keylog=Null where keylog='%s'" % PIN)
     con.commit()
 
 def getroomByMRZ(personNum):
