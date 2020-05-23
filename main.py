@@ -124,7 +124,11 @@ async def checkPassport(path, camera):
             print("Don't have room")
             await client.command('page pageWrong')
             await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
-            await client.set('p6_tcount.txt', "This page will close in 10 seconds.")
+            for i in range(10, 0, -1):
+                if (await client.get('dp') != 6):
+                    raise NameError('Back to standby page!')
+                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+                time.sleep(1)
     except NameError as e:
         print(e)
     except ValueError :
