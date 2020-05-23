@@ -13,6 +13,7 @@ import key_mysql
 from ManageFile import getFilePath
 from mrzScanWithABBYY import scanMrzWithPi
 
+# function will return address of stm32
 def getAddress(slot):
     switcher = {
             0:0x46,
@@ -24,9 +25,12 @@ def getAddress(slot):
             }
     return switcher.get(slot, None)
 
+# this function will receive PIN-code from nextion display
+# then check to server get room_number and slot
+# then match slot to stm32 address and send many slot to stm32
 async def checkKey():
     try:
-#        bus = SMBus(1)
+        bus = SMBus(1)
         getkey = await client.get('t0.txt')
         await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
@@ -42,14 +46,13 @@ async def checkKey():
                 slot = int(room[0]/22)
                 if (slot>prev_slot):
                     print("-10")
-#                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
                 time.sleep(0.01)
                 print(room[0])
-#                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
+                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
                 print("---------------------------------------- Room Number is", room[1])
                 prev_slot = slot
-#            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-            #Go to show room number page
+            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
             await client.command('page shRoom')
             key_mysql.setkeylog(PIN)
         else:
@@ -58,6 +61,7 @@ async def checkKey():
     except NameError as e:
         print('checkKey function: ', e)
 
+# this function prepare for read mrz in passport
 async def scanPassport():
     pathfile = getFilePath()
     camera = PiCamera()
@@ -67,6 +71,10 @@ async def scanPassport():
     #camera.stop_preview()
     camera.close()
 
+# this function will loop until has passport in readBox
+# then scan personal number in passport data 
+# then check that to server get number room 
+# then send key slot to stm32 
 async def checkPassport(path, camera):
     global client
     try:
@@ -82,6 +90,7 @@ async def checkPassport(path, camera):
                 if '<' in d:
                     noPP = False
                     break
+        await client.command('page 5')
         await client.set('p5_t0.txt', "Your passport in process")
         await client.set('p5_t1.txt', "Waiting..")
         if connect():
@@ -89,24 +98,26 @@ async def checkPassport(path, camera):
         else: #if connect to internet fail!
             await client.command('page pageWrong')
         personNum = data.personalNum.replace("<", "")
-        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: '+data.name+'"')
+# this is debug please comment or delete it when done
+        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: %s"' % data.name)
         await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
         await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+personNum+'"')
         await client.command('page waitting_page')
+# end debug
         rooms = key_mysql.getroomByMRZ(personNum)
         if rooms:
+            bus = SMBus(1)
             prev_slot = 0
             for room in rooms:
-                
-                #slot = int(room[0]/22)
-                #if (slot>prev_slot):
-                #    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-                #time.sleep(0.01)
-                #bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
+# there is some problem to tell stm32 about slot
+#                slot = int(room[0]/22)
+#                if (slot>prev_slot):
+#                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+#                time.sleep(0.01)
+#                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
                 print("---------------------------------------- Room Number is", room)
-                #prev_slot = slot
-            #bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-            #Go to show room number page
+#                prev_slot = slot
+#            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
             await client.command('page shRoom')
             #key_mysql.setkeylog(PIN)
         else:
@@ -117,8 +128,12 @@ async def checkPassport(path, camera):
     except NameError as e:
         print(e)
     except ValueError :
+        await client.set('p5_t0.txt', "Plase insert passport agin")
+        await client.set('p5_t1.txt', "Scanning..")
+        await client.command('xstr 200,200,400,30,1,BLACK,8885,0,0,1,"We got some problem."')
         await checkPassport(path, camera)
 
+# this function get event from nextion screen
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:
         print('We have booted up!')
@@ -129,6 +144,7 @@ def event_handler(type_, data):
             asyncio.create_task(scanPassport())
     logging.info('Data: '+str(data))
 
+# this function to check raspberry pi can connect to network
 def connect(host='http://google.com'):
     try:
         urllib.request.urlopen(host) #Python 3.x
@@ -136,6 +152,7 @@ def connect(host='http://google.com'):
     except:
         return False
 
+# initial nextion function 
 async def run():
     global client
     client = Nextion('/dev/ttyAMA0', 9600, event_handler)
@@ -156,6 +173,7 @@ async def run():
 
     print('finished')
 
+# main function
 if __name__ == '__main__':
     try:
         key_mysql.servInit()
