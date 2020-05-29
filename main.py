@@ -104,31 +104,31 @@ async def checkPassport(path, camera):
         await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+personNum+'"')
         await client.command('page waitting_page')
 # end debug
-        rooms = key_mysql.getroomByMRZ(personNum)
-        if rooms:
-            bus = SMBus(1)
-            prev_slot = 0
-            for room in rooms:
 # there is some problem to tell stm32 about slot
+#        rooms = key_mysql.getroomByMRZ(personNum)
+#        if rooms:
+#            bus = SMBus(1)
+#            prev_slot = 0
+#            for room in rooms:
 #                slot = int(room[0]/22)
 #                if (slot>prev_slot):
 #                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
 #                time.sleep(0.01)
 #                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
-                print("---------------------------------------- Room Number is", room)
+#                print("---------------------------------------- Room Number is", room)
 #                prev_slot = slot
 #            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-            await client.command('page shRoom')
+#            await client.command('page shRoom')
             #key_mysql.setkeylog(PIN)
-        else:
-            print("Don't have room")
-            await client.command('page pageWrong')
-            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
-            for i in range(10, 0, -1):
-                if (await client.get('dp') != 6):
-                    raise NameError('Back to standby page!')
-                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
-                time.sleep(1)
+#        else:
+#            print("Don't have room")
+#            await client.command('page pageWrong')
+#            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+#            for i in range(10, 0, -1):
+#                if (await client.get('dp') != 6):
+#                    raise NameError('Back to standby page!')
+#                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+#                time.sleep(1)
     except NameError as e:
         print(e)
     except ValueError :
