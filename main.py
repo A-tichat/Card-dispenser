@@ -45,14 +45,14 @@ async def checkKey():
             for room in rooms:
                 slot = int(room[0]/22)
                 if (slot>prev_slot):
-                    print("-10")
-                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+                    print("255")
+                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [255]))
                 time.sleep(0.01)
                 print(room[0])
                 bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
                 print("---------------------------------------- Room Number is", room[1])
                 prev_slot = slot
-            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
+            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [255]))
             await client.command('page shRoom')
             key_mysql.setkeylog(PIN)
         else:
