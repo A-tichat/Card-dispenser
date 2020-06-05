@@ -12,6 +12,7 @@ from datetime import datetime
 import key_mysql 
 from ManageFile import getFilePath
 from mrzScanWithABBYY import scanMrzWithPi
+from pyscard.ai.thai_id_card import idCardScan
 
 # function will return address of stm32
 def getAddress(slot):
@@ -100,9 +101,9 @@ async def checkPassport(path, camera):
         personNum = data.personalNum.replace("<", "")
 # this is debug please comment or delete it when done
         await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: %s"' % data.name)
-        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: '+data.surname+'"')
-        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: '+personNum+'"')
-        await client.command('page waitting_page')
+        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: %s"' % data.surname)
+        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: %s"' % personNum)
+        #await client.command('page waitting_page')
 # end debug
 # there is some problem to tell stm32 about slot
 #        rooms = key_mysql.getroomByMRZ(personNum)
@@ -137,6 +138,29 @@ async def checkPassport(path, camera):
         await client.command('xstr 200,200,400,30,1,BLACK,8885,0,0,1,"We got some problem."')
         await checkPassport(path, camera)
 
+async def scanId():
+    global client
+    await client.command('page 0')
+    while (await client.command('dp') != 5):
+        pass
+    await client.set('p5_t0.txt', "Please insert your id card")
+    time.sleep(10)
+    data = findId()
+    await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % data.thFullname)
+    await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % data.cid)
+    await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % data.address)
+    #await client.command('page waitting_page')
+
+def findId():
+    try:
+        temp = idCardScan()
+        temp.printData()
+        return temp
+    except:
+        print("tryagin")
+        findId()
+    
+    
 # this function get event from nextion screen
 def event_handler(type_, data):
     if type_ == EventType.STARTUP:
@@ -146,6 +170,8 @@ def event_handler(type_, data):
             asyncio.create_task(checkKey())
         elif (data.page_id == 4 and data.component_id == 4):
             asyncio.create_task(scanPassport())
+        elif (data.page_id == 4 and data.component_id == 3):
+            asyncio.create_task(scanId())
     logging.info('Data: '+str(data))
 
 # this function to check raspberry pi can connect to network
