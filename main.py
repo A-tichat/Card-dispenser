@@ -141,7 +141,7 @@ async def checkPassport(path, camera):
 async def scanId():
     global client
     await client.command('page 0')
-    while (await client.command('dp') != 5):
+    while (await client.get('dp') != 5):
         pass
     await client.set('p5_t0.txt', "Please insert your id card")
     time.sleep(10)
