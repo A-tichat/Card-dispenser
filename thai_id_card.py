@@ -116,7 +116,7 @@ class idCardScan:
 			print(readerIndex, readerItem)
 
 		# Select reader
-		readerSelectIndex = int(input("Select reader[0]: ") or "0")
+		readerSelectIndex = 0 #int(input("Select reader[0]: ") or "0")
 
 		reader = readerList[readerSelectIndex]
 		print("Using:", reader)
