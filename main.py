@@ -12,7 +12,7 @@ from datetime import datetime
 import key_mysql 
 from ManageFile import getFilePath
 from mrzScanWithABBYY import scanMrzWithPi
-from pyscard.ai.thai_id_card import idCardScan
+from thai_id_card import idCardScan
 
 # function will return address of stm32
 def getAddress(slot):
