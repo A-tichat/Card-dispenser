@@ -152,8 +152,8 @@ async def scanId():
     await client.set('p5_t0.txt', "Please insert your id card")
     while True:
         try:
-            temp = cardScan()
-            temp.printData()
+            data = cardScan()
+            data.printData()
             await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % data.cid)
             await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % data.thfullname)
             await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % data.addr)
