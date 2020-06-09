@@ -147,22 +147,22 @@ async def checkPassport(path, camera):
 
 async def scanId():
     global client
-    if (await client.get('dp') != 5):
-        await client.command('page 5')
-        time.sleep(0.3)
-        await client.set('p5_t0.txt', "Please insert your id card")
-    # time.sleep(10)
-    try:
-        data = cardScan()
-        data.printData()
-        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % data.cid)
-        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % data.thfullname)
-        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % data.addr)
-    except:
-        print("wait for card")
-        time.sleep(1)
-        scanId()
-    # await client.command('page waitting_page')
+    await client.command('page 5')
+    time.sleep(0.3)
+    await client.set('p5_t0.txt', "Please insert your id card")
+    while True:
+        try:
+            temp = cardScan()
+            temp.printData()
+            await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % data.cid)
+            await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % data.thfullname)
+            await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % data.addr)
+            break
+        except:
+            print("wait for card")
+            time.sleep(1)
+        # await client.command('page waitting_page')
+
 
 # this function get event from nextion screen
 def event_handler(type_, data):
