@@ -6,4 +6,6 @@ raspistill -t 0 -w 1024 -h 768 -o image.jpg
 tesseract image.jpg stdout
 
 สั่งจอ
+cd Card-dispenser
+source bin/activate
 python3 main.py

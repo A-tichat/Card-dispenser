@@ -8,14 +8,20 @@ from PIL import Image
 from smartcard.System import readers
 from smartcard.util import HexListToBinString, toHexString, toBytes
 # Thailand ID Smartcard
+
+
 def thai2unicode(data):
- result = ''
- result = bytes(data).decode('tis-620')
- return result.strip()
-def getData(cmd, req = [0x00, 0xc0, 0x00, 0x00]):
- data, sw1, sw2 = connection.transmit(cmd)
- data, sw1, sw2 = connection.transmit(req + [cmd[-1]])
- return [data, sw1, sw2]
+    result = ''
+    result = bytes(data).decode('tis-620')
+    return result.strip()
+
+
+def getData(cmd, req=[0x00, 0xc0, 0x00, 0x00]):
+    data, sw1, sw2 = connection.transmit(cmd)
+    data, sw1, sw2 = connection.transmit(req + [cmd[-1]])
+    return [data, sw1, sw2]
+
+
 # Check card
 SELECT = [0x00, 0xA4, 0x04, 0x00, 0x08]
 THAI_CARD = [0xA0, 0x00, 0x00, 0x00, 0x54, 0x48, 0x00, 0x01]
@@ -77,81 +83,39 @@ CMD_PHOTO18 = [0x80, 0xb0, 0x12, 0x6A, 0x02, 0x00, 0xFF]
 CMD_PHOTO19 = [0x80, 0xb0, 0x13, 0x69, 0x02, 0x00, 0xFF]
 # Photo_Part20/20
 CMD_PHOTO20 = [0x80, 0xb0, 0x14, 0x68, 0x02, 0x00, 0xFF]
-# Get all the available readers
-readerList = readers()
-print ('Available readers:')
-for readerIndex,readerItem in enumerate(readerList):
- print(readerIndex, readerItem)
-# Select reader
-readerSelectIndex = 0 #int(input("Select reader[0]: ") or "0")
-reader = readerList[readerSelectIndex]
-print ("Using:", reader)
-connection = reader.createConnection()
-connection.connect()
-atr = connection.getATR()
-print ("ATR: " + toHexString(atr))
-if (atr[0] == 0x3B & atr[1] == 0x67):
- req = [0x00, 0xc0, 0x00, 0x01]
-else :
- req = [0x00, 0xc0, 0x00, 0x00]
-# Check card
-data, sw1, sw2 = connection.transmit(SELECT + THAI_CARD)
-print ("Select Applet: %02X %02X" % (sw1, sw2))
-# CID
-data = getData(CMD_CID, req)
-cid = thai2unicode(data[0])
-print ("CID: " + cid)
-# TH Fullname
-data = getData(CMD_THFULLNAME, req)
-print ("TH Fullname: " +  thai2unicode(data[0]))
-#print(thai2unicode2(data[0])))
-# EN Fullname
-data = getData(CMD_ENFULLNAME, req)
-print ("EN Fullname: " + thai2unicode(data[0]))
-# Date of birth
-data = getData(CMD_BIRTH, req)
-print( "Date of birth: " + thai2unicode(data[0]))
-# Gender
-data = getData(CMD_GENDER, req)
-print ("Gender: " + thai2unicode(data[0]))
-# Card Issuer
-data = getData(CMD_ISSUER, req)
-print ("Card Issuer: " + thai2unicode(data[0]))
-# Issue Date
-data = getData(CMD_ISSUE, req)
-print ("Issue Date: " + thai2unicode(data[0]))
-# Expire Date
-data = getData(CMD_EXPIRE, req)
-print ("Expire Date: " + thai2unicode(data[0]))
-# Address
-data = getData(CMD_ADDRESS, req)
-print ("Address: " + thai2unicode(data[0]))
-'''
-# PHOTO
-photo = getData(CMD_PHOTO1, req[0])
-photo += getData(CMD_PHOTO2, req[0])
-photo += getData(CMD_PHOTO3, req[0])
-photo += getData(CMD_PHOTO4, req[0])
-photo += getData(CMD_PHOTO5, req[0])
-photo += getData(CMD_PHOTO6, req[0])
-photo += getData(CMD_PHOTO7, req[0])
-photo += getData(CMD_PHOTO8, req[0])
-photo += getData(CMD_PHOTO9, req[0])
-photo += getData(CMD_PHOTO10, req[0])
-photo += getData(CMD_PHOTO11, req[0])
-photo += getData(CMD_PHOTO12, req[0])
-photo += getData(CMD_PHOTO13, req[0])
-photo += getData(CMD_PHOTO14, req[0])
-photo += getData(CMD_PHOTO15, req[0])
-photo += getData(CMD_PHOTO16, req[0])
-photo += getData(CMD_PHOTO17, req[0])
-photo += getData(CMD_PHOTO18, req[0])
-photo += getData(CMD_PHOTO19, req[0])
-photo += getData(CMD_PHOTO20, req[0])
-data = HexListToBinString(photo)
-f = open(cid + ".jpg", "wb")
-f.write (data)
-f.close
-'''
-# Exit program
-sys.exit()
+connection = readers()[0].createConnection()
+
+class cardScan:
+    def __init__(self):
+        connection.connect()
+        atr = connection.getATR()
+        # print ("ATR: " + toHexString(atr))
+        if (atr[0] == 0x3B & atr[1] == 0x67):
+            req = [0x00, 0xc0, 0x00, 0x01]
+        else:
+            req = [0x00, 0xc0, 0x00, 0x00]
+        # Check card
+        data, sw1, sw2 = connection.transmit(SELECT + THAI_CARD)
+        print("Select Applet: %02X %02X" % (sw1, sw2))
+        # CID
+        data = getData(CMD_CID, req)
+        self.cid = thai2unicode(data[0])
+        self.thfullname = thai2unicode(getData(CMD_THFULLNAME, req)[0])
+        self.enfullname = thai2unicode(getData(CMD_ENFULLNAME, req)[0])
+        self.birth = thai2unicode(getData(CMD_BIRTH, req)[0])
+        self.gender = thai2unicode(getData(CMD_GENDER, req)[0])
+        self.issuer = thai2unicode(getData(CMD_ISSUER, req)[0])
+        self.issuedate = thai2unicode(getData(CMD_ISSUE, req)[0])
+        self.expire = thai2unicode(getData(CMD_EXPIRE, req)[0])
+        self.addr = thai2unicode(getData(CMD_ADDRESS, req)[0])
+
+    def printData(self):
+        print("CID:", self.cid)
+        print("TH Fullname:", self.thfullname)
+        print("EN Fullname:", self.enfullname)
+        print("Date of birth:", self.birth)
+        print("Gender:", self.gender)
+        print("Card Issuer:", self.issuer)
+        print("Issue Date:", self.issuedate)
+        print("Expire Date:", self.expire)
+        print("Address:", self.addr)
