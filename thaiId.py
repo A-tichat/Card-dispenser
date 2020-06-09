@@ -83,10 +83,11 @@ CMD_PHOTO18 = [0x80, 0xb0, 0x12, 0x6A, 0x02, 0x00, 0xFF]
 CMD_PHOTO19 = [0x80, 0xb0, 0x13, 0x69, 0x02, 0x00, 0xFF]
 # Photo_Part20/20
 CMD_PHOTO20 = [0x80, 0xb0, 0x14, 0x68, 0x02, 0x00, 0xFF]
-connection = readers()[0].createConnection()
+
 
 class cardScan:
     def __init__(self):
+        connection = readers()[0].createConnection()
         connection.connect()
         atr = connection.getATR()
         # print ("ATR: " + toHexString(atr))
@@ -109,13 +110,6 @@ class cardScan:
         self.expire = thai2unicode(getData(CMD_EXPIRE, req)[0])
         self.addr = thai2unicode(getData(CMD_ADDRESS, req)[0])
 
-    def printData(self):
-        print("CID:", self.cid)
-        print("TH Fullname:", self.thfullname)
-        print("EN Fullname:", self.enfullname)
-        print("Date of birth:", self.birth)
-        print("Gender:", self.gender)
-        print("Card Issuer:", self.issuer)
-        print("Issue Date:", self.issuedate)
-        print("Expire Date:", self.expire)
-        print("Address:", self.addr)
+    def __str__(self):
+        return "Card info[cid={}, thfullname={}, enfullname={}, birth={}, gender={}, issuer={}, issuedate={}, expire={}, addr={}]".format(
+            self.cid, self.thfullname, self.enfullname, self.birth, self.gender, self.issuer, self.issuedate, self.expire, self.addr)
