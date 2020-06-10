@@ -83,11 +83,10 @@ CMD_PHOTO18 = [0x80, 0xb0, 0x12, 0x6A, 0x02, 0x00, 0xFF]
 CMD_PHOTO19 = [0x80, 0xb0, 0x13, 0x69, 0x02, 0x00, 0xFF]
 # Photo_Part20/20
 CMD_PHOTO20 = [0x80, 0xb0, 0x14, 0x68, 0x02, 0x00, 0xFF]
-
+connection = readers()[0].createConnection()
 
 class cardScan:
     def __init__(self):
-        connection = readers()[0].createConnection()
         connection.connect()
         atr = connection.getATR()
         # print ("ATR: " + toHexString(atr))

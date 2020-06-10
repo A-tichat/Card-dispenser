@@ -5,68 +5,45 @@ import random
 import time
 import threading
 import re
-import urllib.request
+
 import pytesseract
 from picamera import PiCamera
 from PIL import Image
 from nextion import Nextion, EventType
-from smbus2 import SMBus, i2c_msg
-from mysql.connector import Error
 from datetime import datetime
 
-import key_mysql
+import stm32
 from ManageFile import getFilePath
 from mrzScanWithABBYY import scanMrzWithPi
-from thaiId import *
-
-# function will return address of stm32
-def getAddress(slot):
-    switcher = {
-        0: 0x46,
-        1: 0x47,
-        2: 0x48,
-        3: 0x49,
-        4: 0x4A,
-        5: 0x4B
-    }
-    return switcher.get(slot, None)
+from thaiId import cardScan
+from api_response import *
 
 # this function will receive PIN-code from nextion display
 # then check to server get room_number and slot
 # then match slot to stm32 address and send many slot to stm32
 async def checkKey():
     try:
-        bus = SMBus(1)
         getkey = await client.get('t0.txt')
         await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
+
+        # check internet connection
         if connect():
-            rooms = key_mysql.getroom_number(PIN)
-        else:  # if connect to internet fail!
+            rooms = getRoom('password', PIN)
+        else: 
             await client.command('page pageWrong')
 
+        # check pin correct
         if rooms:
-            print('True')
-            prev_slot = 0
-            for room in rooms:
-                slot = int(room[0]/22)
-                if (slot > prev_slot):
-                    print("255")
-                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [255]))
-                time.sleep(0.01)
-                print(room[0])
-                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0] % 22]))
-                print(
-                    "---------------------------------------- Room Number is", room[1])
-                prev_slot = slot
-            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [255]))
+            stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            key_mysql.setkeylog(PIN)
+            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            resetRoom(json_rooms)
         else:
-            print('PIN-code not correct')
             await client.command('page PinWrong')
     except NameError as e:
         print('checkKey function: ', e)
+
 
 # this function prepare for read mrz in passport
 async def scanPassport():
@@ -77,6 +54,7 @@ async def scanPassport():
     await checkPassport(pathfile, camera)
     # camera.stop_preview()
     camera.close()
+
 
 # this function will loop until has passport in readBox
 # then scan personal number in passport data
@@ -100,42 +78,35 @@ async def checkPassport(path, camera):
         await client.command('page 5')
         await client.set('p5_t0.txt', "Your passport in process")
         await client.set('p5_t1.txt', "Waiting..")
+        
+        # check internet connection
         if connect():
             data = scanMrzWithPi(path)
-        else:  # if connect to internet fail!
+        else:  
             await client.command('page pageWrong')
         personNum = data.personalNum.replace("<", "")
-# this is debug please comment or delete it when done
+        
+        # this is debug please comment or delete it when done
         await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: %s"' % data.name)
         await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: %s"' % data.surname)
         await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: %s"' % personNum)
         # await client.command('page waitting_page')
-# end debug
-# there is some problem to tell stm32 about slot
-#        rooms = key_mysql.getroomByMRZ(personNum)
-#        if rooms:
-#            bus = SMBus(1)
-#            prev_slot = 0
-#            for room in rooms:
-#                slot = int(room[0]/22)
-#                if (slot>prev_slot):
-#                    bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-#                time.sleep(0.01)
-#                bus.i2c_rdwr(i2c_msg.write(getAddress(slot), [room[0]%22]))
-#                print("---------------------------------------- Room Number is", room)
-#                prev_slot = slot
-#            bus.i2c_rdwr(i2c_msg.write(getAddress(prev_slot), [-10]))
-#            await client.command('page shRoom')
-        # key_mysql.setkeylog(PIN)
-#        else:
-#            print("Don't have room")
-#            await client.command('page pageWrong')
-#            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
-#            for i in range(10, 0, -1):
-#                if (await client.get('dp') != 6):
-#                    raise NameError('Back to standby page!')
-#                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
-#                time.sleep(1)
+        # end debug
+        rooms = getRoom('cid', personNum)
+        if rooms:
+            stm32.sendSlot(rooms)
+            await client.command('page shRoom')
+            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            resetRoom(json_rooms)
+        else:
+            print("Don't have room")
+            await client.command('page pageWrong')
+            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            for i in range(10, 0, -1):
+               if (await client.get('dp') != 6):
+                   raise NameError('Back to standby page!')
+               await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+               time.sleep(1)
     except NameError as e:
         print(e)
     except ValueError:
@@ -150,18 +121,38 @@ async def scanId():
     await client.command('page 5')
     time.sleep(0.3)
     await client.set('p5_t0.txt', "Please insert your id card")
-    while True: #(await client.get('dp') == 5):
-        try:
-            temp = cardScan()
-            print(temp)
-            await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % temp.cid)
-            await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % temp.thfullname)
-            await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % temp.addr)
-            break
-        except:
-            print("wait for card")
-            del temp
-            time.sleep(1)
+    await findId()
+
+
+async def findId():
+    global client
+    try:
+        temp = cardScan()
+        print(temp)
+        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % temp.cid)
+        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % temp.thfullname)
+        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Address: %s"' % temp.addr)
+        """
+        rooms = getRoom('cid', temp.cid)
+        if rooms:
+            stm32.sendSlot(rooms)
+            await client.command('page shRoom')
+            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            resetRoom(json_rooms)
+        else:
+            print("Don't have room")
+            await client.command('page pageWrong')
+            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            for i in range(10, 0, -1):
+               if (await client.get('dp') != 6):
+                   raise NameError('Back to standby page!')
+               await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+               time.sleep(1)
+        """
+    except:
+        print("wait for card")
+        time.sleep(1)
+        await findId()
     print("stop")
     # await client.command('page waitting_page')
 
@@ -179,13 +170,6 @@ def event_handler(type_, data):
             asyncio.create_task(scanId())
     logging.info('Data: '+str(data))
 
-# this function to check raspberry pi can connect to network
-def connect(host='http://google.com'):
-    try:
-        urllib.request.urlopen(host)  # Python 3.x
-        return True
-    except:
-        return False
 
 # initial nextion function
 async def run():
@@ -208,21 +192,15 @@ async def run():
 
     print('finished')
 
+
 # main function
 if __name__ == '__main__':
-    try:
-        key_mysql.servInit()
-        logging.basicConfig(
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            level=logging.DEBUG,
-            handlers=[
-                logging.StreamHandler()
-            ])
-        loop = asyncio.get_event_loop()
-        asyncio.ensure_future(run())
-        loop.run_forever()
-    except Error as e:
-        print("Error while connected to MySQL", e)
-    finally:
-        key_mysql.servClose()
-        print("MySQL connection is closed")
+    logging.basicConfig(
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG,
+        handlers=[
+            logging.StreamHandler()
+        ])
+    loop = asyncio.get_event_loop()
+    asyncio.ensure_future(run())
+    loop.run_forever()
