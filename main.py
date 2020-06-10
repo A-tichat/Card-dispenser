@@ -121,36 +121,35 @@ async def scanId():
     await client.command('page 5')
     time.sleep(0.3)
     await client.set('p5_t0.txt', "Please insert your id card")
-    time.sleep(5)
     await findId()
 
 
 async def findId():
     global client
-    temp = cardScan()
-    print(temp)
-    await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % temp.cid)
-    await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"EN FullnName: %s"' % temp.enfullname)
-    rooms = getRoom('cid', temp.cid)
-    if rooms:
-        stm32.sendSlot(rooms)
-        await client.command('page shRoom')
-        json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
-        resetRoom(json_rooms)
-    else:
-        print("Don't have room")
-        await client.command('page pageWrong')
-        await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
-        for i in range(10, 0, -1):
-            if (await client.get('dp') != 6):
-                raise NameError('Back to standby page!')
-            await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
-            time.sleep(1)
-    # except:
-    #     print("wait for card")
-    #     time.sleep(1)
-    #     await findId()
-    print("stop")
+    try:
+        temp = cardScan()
+        print(temp)
+        rooms = getRoom('cid', temp.cid)
+        if rooms:
+            stm32.sendSlot(rooms)
+            await client.command('page shRoom')
+            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            resetRoom(json_rooms)
+        else:
+            print("Don't have room")
+            await client.command('page pageWrong')
+            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            for i in range(10, 0, -1):
+                if (await client.get('dp') != 6):
+                    raise NameError('Back to standby page!')
+                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+                time.sleep(1)
+    except:
+        print("wait for card")
+        if (await client.get('dp') != 5):
+            return
+        time.sleep(1)
+        await findId()
     # await client.command('page waitting_page')
 
 

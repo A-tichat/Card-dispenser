@@ -19,8 +19,8 @@ def sendSlot(rooms):
     j=0
     while (i < len(rooms)):
         while (j < len(rooms)):
-            j+=1
             r = rooms[j]
+            j+=1
             lot = int(r['slot']/22)
             if lot > prev_lot:
                 break
