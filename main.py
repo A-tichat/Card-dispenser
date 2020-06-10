@@ -130,7 +130,7 @@ async def findId():
     temp = cardScan()
     print(temp)
     await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"CID: %s"' % temp.cid)
-    await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"TH FullnName: %s"' % temp.enfullname)
+    await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"EN FullnName: %s"' % temp.enfullname)
     rooms = getRoom('cid', temp.cid)
     if rooms:
         stm32.sendSlot(rooms)
