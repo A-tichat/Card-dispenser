@@ -15,7 +15,8 @@ def getAddress(slot):
 def sendSlot(rooms):
     bus = SMBus(1)
     prev_lot = int(rooms[0]['slot']/22)
-    i, j=0
+    i=0
+    j=0
     while (i < len(rooms)):
         while (j < len(rooms)):
             j+=1
