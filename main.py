@@ -7,6 +7,7 @@ import threading
 import re
 
 import pytesseract
+import RPi.GPIO as GPIO
 from picamera import PiCamera
 from PIL import Image
 from nextion import Nextion, EventType
@@ -66,10 +67,13 @@ async def checkPassport(path, camera):
         # await client.command('tm0.en=0')
         noPP = True
         while noPP:
+            GPIO.output(17, GPIO.HIGH)
+            time.sleep(0.2)
             if (await client.get('dp') != 5):
                 raise NameError("CANCEL PRESS!")
             camera.capture(path)
             img = Image.open(path)
+            GPIO.output(17, GPIO.HIGH)
             f = pytesseract.image_to_string(img)
             for d in f.splitlines():
                 if '<' in d:
@@ -191,6 +195,9 @@ async def run():
 
 # main function
 if __name__ == '__main__':
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.output(17, GPIO.LOW)
     logging.basicConfig(
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.DEBUG,
