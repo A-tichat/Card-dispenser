@@ -70,10 +70,11 @@ async def checkPassport(path, camera):
             GPIO.output(17, GPIO.HIGH)
             time.sleep(0.2)
             if (await client.get('dp') != 5):
+                GPIO.output(17, GPIO.LOW)
                 raise NameError("CANCEL PRESS!")
             camera.capture(path)
             img = Image.open(path)
-            GPIO.output(17, GPIO.HIGH)
+            GPIO.output(17, GPIO.LOW)
             f = pytesseract.image_to_string(img)
             for d in f.splitlines():
                 if '<' in d:
@@ -197,7 +198,9 @@ async def run():
 if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)
+    GPIO.output(27, GPIO.HIGH)
     logging.basicConfig(
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.DEBUG,
