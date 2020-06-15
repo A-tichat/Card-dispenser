@@ -149,6 +149,8 @@ async def findId():
                     raise NameError('Back to standby page!')
                 await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
                 time.sleep(1)
+        print("success")
+        await client.command("page 1")
     except:
         print("wait for card")
         if (await client.get('dp') != 5):
