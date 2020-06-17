@@ -51,9 +51,11 @@ async def scanPassport():
     pathfile = getFilePath()
     camera = PiCamera()
     camera.resolution = (1024, 768)
+    GPIO.output(17, GPIO.HIGH)
     # camera.start_preview()
     await checkPassport(pathfile, camera)
     # camera.stop_preview()
+    GPIO.output(17, GPIO.LOW)
     camera.close()
 
 
@@ -67,14 +69,12 @@ async def checkPassport(path, camera):
         # await client.command('tm0.en=0')
         noPP = True
         while noPP:
-            GPIO.output(17, GPIO.HIGH)
-            time.sleep(0.2)
+            time.sleep(0.3)
             if (await client.get('dp') != 5):
                 GPIO.output(17, GPIO.LOW)
                 raise NameError("CANCEL PRESS!")
             camera.capture(path)
             img = Image.open(path)
-            GPIO.output(17, GPIO.LOW)
             f = pytesseract.image_to_string(img)
             for d in f.splitlines():
                 if '<' in d:
@@ -124,7 +124,7 @@ async def checkPassport(path, camera):
 async def scanId():
     global client
     await client.command('page 5')
-    time.sleep(0.3)
+    time.sleep(0.5)
     await client.set('p5_t0.txt', "Please insert your id card")
     await findId()
 
