@@ -53,7 +53,6 @@ async def scanPassport():
     pathfile = getFilePath()
     camera = PiCamera()
     camera.resolution = (1024, 768)
-    GPIO.output(17, GPIO.HIGH)
     # camera.start_preview()
     await checkPassport(pathfile, camera)
     # camera.stop_preview()
@@ -68,7 +67,7 @@ async def scanPassport():
 async def checkPassport(path, camera):
     global client
     try:
-        # await client.command('tm0.en=0')
+        GPIO.output(17, GPIO.HIGH)
         noPP = True
         while noPP:
             time.sleep(0.3)
