@@ -22,6 +22,8 @@ from api_response import *
 # this function will receive PIN-code from nextion display
 # then check to server get room_number and slot
 # then match slot to stm32 address and send many slot to stm32
+
+
 async def checkKey():
     try:
         getkey = await client.get('t0.txt')
@@ -31,14 +33,14 @@ async def checkKey():
         # check internet connection
         if connect():
             rooms = getRoom('password', PIN)
-        else: 
+        else:
             await client.command('page pageWrong')
 
         # check pin correct
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
             resetRoom(json_rooms)
         else:
             await client.command('page PinWrong')
@@ -81,37 +83,32 @@ async def checkPassport(path, camera):
                     noPP = False
                     break
         await client.command('page 5')
+        GPIO.output(17, GPIO.LOW)
         await client.set('p5_t0.txt', "Your passport in process")
         await client.set('p5_t1.txt', "Waiting..")
-        
+
         # check internet connection
         if connect():
             data = scanMrzWithPi(path)
-        else:  
+        else:
             await client.command('page pageWrong')
         personNum = data.personalNum.replace("<", "")
-        
-        # this is debug please comment or delete it when done
-        await client.command('xstr 200,200,400,30,1,BLACK,WHITE,0,0,1,"Name: %s"' % data.name)
-        await client.command('xstr 200,230,400,30,1,BLACK,WHITE,0,0,1,"Surname: %s"' % data.surname)
-        await client.command('xstr 200,290,400,30,1,BLACK,WHITE,0,0,1,"Personal number: %s"' % personNum)
-        # await client.command('page waitting_page')
-        # end debug
+
         rooms = getRoom('cid', personNum)
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
             resetRoom(json_rooms)
         else:
             print("Don't have room")
             await client.command('page pageWrong')
             await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
             for i in range(10, 0, -1):
-               if (await client.get('dp') != 6):
-                   raise NameError('Back to standby page!')
-               await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
-               time.sleep(1)
+                if (await client.get('dp') != 6):
+                    raise NameError('Back to standby page!')
+                await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
+                time.sleep(1)
     except NameError as e:
         print(e)
     except ValueError:
@@ -124,7 +121,6 @@ async def checkPassport(path, camera):
 async def scanId():
     global client
     await client.command('page 5')
-    time.sleep(0.5)
     await client.set('p5_t0.txt', "Please insert your id card")
     await findId()
 
@@ -138,7 +134,7 @@ async def findId():
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot':x['slot']}, rooms))
+            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
             resetRoom(json_rooms)
         else:
             print("Don't have room")
