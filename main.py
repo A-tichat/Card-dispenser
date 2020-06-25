@@ -120,7 +120,7 @@ async def checkPassport(path, camera):
 async def scanId():
     global client
     await client.command('page 5')
-    await client.set('p5_t0.txt', "Please insert your id card")
+    await client.set('p5_t0.txt', "Please insert your Thai ID card")
     await findId()
 
 
