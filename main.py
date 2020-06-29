@@ -114,7 +114,8 @@ async def checkPassport(path, camera):
         await client.set('p5_t0.txt', "Plase insert passport agin")
         await client.set('p5_t1.txt', "Scanning..")
         await client.command('xstr 200,200,400,30,1,BLACK,8885,0,0,1,"We got some problem."')
-        await checkPassport(path, camera)
+        if (await client.get('dp') == 5):
+            await checkPassport(path, camera)
 
 
 async def scanId():
@@ -146,10 +147,9 @@ async def findId():
                 time.sleep(1)
     except:
         print("wait for card")
-        if (await client.get('dp') != 5):
-            return
         time.sleep(1)
-        await findId()
+        if (await client.get('dp') == 6):
+            await findId()
     # await client.command('page waitting_page')
 
 
