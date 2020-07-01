@@ -31,7 +31,7 @@ async def checkKey():
         PIN = re.sub(' ', '', getkey)
 
         # check internet connection
-        if connect():
+        if connect() and PIN:
             rooms = getRoom('password', PIN)
         else:
             await client.command('page pageWrong')
