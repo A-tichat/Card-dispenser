@@ -81,10 +81,8 @@ async def checkPassport(path, camera):
                 if '<' in d:
                     noPP = False
                     break
-        await client.command('page 5')
+        await client.command('page passportScan')
         GPIO.output(17, GPIO.LOW)
-        await client.set('p5_t0.txt', "Your passport in process")
-        await client.set('p5_t1.txt', "Waiting..")
 
         # check internet connection
         if connect():
@@ -102,7 +100,8 @@ async def checkPassport(path, camera):
         else:
             print("Don't have room")
             await client.command('page pageWrong')
-            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            await client.set('p6_t0.txt',"Reservation Not Found")
+            await client.set('p6_t1.txt', "Plase try again or use PIN code instead.")
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
                     raise NameError('Back to standby page!')
@@ -111,16 +110,15 @@ async def checkPassport(path, camera):
     except NameError as e:
         print(e)
     except ValueError:
-        await client.set('p5_t0.txt', "Plase insert passport agin")
-        await client.set('p5_t1.txt', "Scanning..")
-        await client.command('xstr 200,200,400,30,1,BLACK,8885,0,0,1,"We got some problem."')
+        await client.command('again.pco=64512')
+        await client.command('xstr 250,215,400,30,1,GRAY,65535,0,0,1,"Sorry! We got some problem.')
         if (await client.get('dp') == 5):
             await checkPassport(path, camera)
 
 
 async def scanId():
     global client
-    await client.command('page 5')
+    await client.command('page passportScan')
     await client.set('p5_t0.txt', "Please insert your Thai ID card")
     await findId()
 
@@ -139,7 +137,8 @@ async def findId():
         else:
             print("Don't have room")
             await client.command('page pageWrong')
-            await client.set('p6_t1.txt', "Please make sure you have booked a room with the hotel.")
+            await client.set('p6_t0.txt',"Reservation Not Found")
+            await client.set('p6_t1.txt', "Plase try again or use PIN code instead.")
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
                     raise NameError('Back to standby page!')
