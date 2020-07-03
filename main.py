@@ -159,9 +159,9 @@ def event_handler(type_, data):
     if type_ == EventType.TOUCH:
         if (data.page_id == 3 and data.component_id == 42 or data.page_id == 2 and data.component_id == 41):
             asyncio.create_task(checkKey())
-        elif (data.page_id == 4 and data.component_id == 4):
-            asyncio.create_task(scanPassport())
         elif (data.page_id == 4 and data.component_id == 3):
+            asyncio.create_task(scanPassport())
+        elif (data.page_id == 4 and data.component_id == 2):
             asyncio.create_task(scanId())
     logging.info('Data: '+str(data))
 
