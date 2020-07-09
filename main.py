@@ -35,6 +35,9 @@ async def checkKey():
             rooms = getRoom('password', PIN)
         else:
             await client.command('page pageWrong')
+            await client.set('p6_t0', "Can't connect to internet")
+            await client.set('p6_t1', "Make sure this device connect to internet correctly")
+            await client.command('tm0.en=0')
 
         # check pin correct
         if rooms:
@@ -70,7 +73,6 @@ async def checkPassport(path, camera):
         GPIO.output(17, GPIO.HIGH)
         noPP = True
         while noPP:
-            time.sleep(0.3)
             if (await client.get('dp') != 5):
                 GPIO.output(17, GPIO.LOW)
                 raise NameError("CANCEL PRESS!")
@@ -89,6 +91,9 @@ async def checkPassport(path, camera):
             data = scanMrzWithPi(path)
         else:
             await client.command('page pageWrong')
+            await client.set('p6_t0', "Can't connect to internet")
+            await client.set('p6_t1', "Make sure this device connect to internet correctly")
+            await client.command('tm0.en=0')
         personNum = data.personalNum.replace("<", "")
 
         rooms = getRoom('cid', personNum)
@@ -100,8 +105,6 @@ async def checkPassport(path, camera):
         else:
             print("Don't have room")
             await client.command('page pageWrong')
-            await client.set('p6_t0.txt',"Reservation Not Found")
-            await client.set('p6_t1.txt', "Plase try again or use PIN code instead.")
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
                     raise NameError('Back to standby page!')
@@ -110,16 +113,12 @@ async def checkPassport(path, camera):
     except NameError as e:
         print(e)
     except ValueError:
-        await client.command('again.pco=64512')
-        await client.command('xstr 250,215,400,30,1,GRAY,65535,0,0,1,"Sorry! We got some problem.')
-        if (await client.get('dp') == 5):
-            await checkPassport(path, camera)
+        await client.command('page pageWrong')
 
 
 async def scanId():
     global client
-    await client.command('page passportScan')
-    await client.set('p5_t0.txt', "Please insert your Thai ID card")
+    await client.command('page idScan')
     await findId()
 
 
@@ -137,8 +136,6 @@ async def findId():
         else:
             print("Don't have room")
             await client.command('page pageWrong')
-            await client.set('p6_t0.txt',"Reservation Not Found")
-            await client.set('p6_t1.txt', "Plase try again or use PIN code instead.")
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
                     raise NameError('Back to standby page!')
@@ -184,7 +181,9 @@ async def run():
             await client.command('page stb_page')
     else:  # if connect to internet fail!
         await client.command('page pageWrong')
-
+        await client.set('p6_t0', "Can't connect to internet")
+        await client.set('p6_t1', "Make sure this device connect to internet correctly")
+        await client.command('tm0.en=0')
     print('finished')
 
 
