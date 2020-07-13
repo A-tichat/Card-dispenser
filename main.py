@@ -47,9 +47,9 @@ def internet_status(host="8.8.8.8", port=53, timeout=3):
 async def change_stat():
     global connect
     if connect:
-        await client.command('status.pic=17')
+        await client.command("status.pic=17")
     else:
-        await client.command('status.pic=16')
+        await client.command("status.pic=16")
 
 
 def connection(host="8.8.8.8", port=53, timeout=1):
@@ -88,8 +88,6 @@ async def checkKey():
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
 
-        if (await client.get('dp') != 9):
-            raise NameError("cancel press")
         # check pin correct
         if rooms:
             stm32.sendSlot(rooms)
