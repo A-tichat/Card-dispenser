@@ -217,7 +217,7 @@ def event_handler(type_, data):
 # initial nextion function
 async def run():
     global client
-    client = Nextion('/dev/ttyAMA0', 9600, event_handler)
+    client = Nextion('/dev/ttyAMA0', 115200, event_handler)
     await client.connect()
 
     # await client.sleep()
