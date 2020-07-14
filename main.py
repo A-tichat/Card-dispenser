@@ -3,7 +3,6 @@ import logging
 import os
 import random
 import time
-import threading
 import re
 import socket
 
@@ -21,51 +20,12 @@ from thaiId import cardScan
 from api_response import *
 
 
-def internet_status(host="8.8.8.8", port=53, timeout=3):
-    try:
-        global netStat
-        global netCheck, connect
-        time.sleep(3)
-        socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-        connect = True
-        if (netStat < 1):
-            time.sleep(1)
-            asyncio.create_task(change_stat())
-            netStat = 2
-        if (netCheck):
-            internet_status()
-    except socket.error as ex:
-        connect = False
-        if (netStat > 1):
-            asyncio.create_task(change_stat())
-            netStat = 0
-        if (netCheck):
-            internet_status()
-
-
 async def change_stat():
     global connect
     if connect:
-        await client.command("status.pic=17")
+        await client.command("stb_page.status.pic=17")
     else:
-        await client.command("status.pic=16")
-
-
-def connection(host="8.8.8.8", port=53, timeout=1):
-    try:
-        global netStat
-        global connect
-        socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-        connect = True
-        change_stat()
-        netStat = 2
-    except socket.error as ex:
-        print(ex)
-        connect = False
-        change_stat()
-        netStat = 0
+        await client.command("stb_page.status.pic=16")
 
 
 # this function will receive PIN-code from nextion display
@@ -187,7 +147,7 @@ async def findId():
     except:
         print("wait for card")
         time.sleep(1)
-        if (await client.get('dp') == 6):
+        if (await client.get('dp') == 10):
             await findId()
     # await client.command('page waitting_page')
 
@@ -199,7 +159,7 @@ def event_handler(type_, data):
     if type_ == EventType.TOUCH:
         if (data.page_id == 1):
             if (data.component_id == 3):
-                connection()
+                asyncio.create_task(change_stat())
         elif (data.page_id == 2):
             if (data.component_id == 41):
                 asyncio.create_task(checkKey())
@@ -217,7 +177,7 @@ def event_handler(type_, data):
 # initial nextion function
 async def run():
     global client
-    client = Nextion('/dev/ttyAMA0', 115200, event_handler)
+    client = Nextion('/dev/ttyAMA0', 9600, event_handler)
     await client.connect()
 
     # await client.sleep()
@@ -240,23 +200,18 @@ async def run():
 
 # main function
 if __name__ == '__main__':
-    try:
-        netStat = 0
-        connect = True
-        netCheck = True
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(17, GPIO.OUT)
-        GPIO.output(17, GPIO.LOW)
-        checkNetwork = threading.Thread(target=internet_status)
-        logging.basicConfig(
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            level=logging.DEBUG,
-            handlers=[
-                logging.StreamHandler()
-            ])
-        loop = asyncio.get_event_loop()
-        asyncio.ensure_future(run())
-        checkNetwork.start()
-        loop.run_forever()
-    finally:
-        netCheck = False
+    netStat = 0
+    connect = True
+    netCheck = True
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.output(17, GPIO.LOW)
+    logging.basicConfig(
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG,
+        handlers=[
+            logging.StreamHandler()
+        ])
+    loop = asyncio.get_event_loop()
+    asyncio.ensure_future(run())
+    loop.run_forever()

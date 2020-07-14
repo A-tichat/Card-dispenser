@@ -15,6 +15,7 @@ def mrz_scan(source_file, APPID, PWD):
     input_file = open(source_file, 'rb')
     post_file = {input_file.name: input_file}
     # print("Waiting...")
+    time.sleep(0.0001)
     result = ocr_engine.process_and_download(
         post_file, exportFormat='txt', language='English')
     mrz_code = ""
