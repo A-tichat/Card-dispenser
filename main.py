@@ -20,8 +20,9 @@ from thaiId import cardScan
 from api_response import *
 
 
-async def change_stat():
+ async def change_stat():
     global connect
+    connect=not connect
     if connect:
         await client.command("stb_page.status.pic=17")
     else:
@@ -34,13 +35,12 @@ async def change_stat():
 async def checkKey():
     try:
         global client
-        global connect
         getkey = await client.get('t0.txt')
         await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
 
         # check internet connection
-        if connect and PIN:
+        if connect() and PIN:
             rooms = getRoom('password', PIN)
         else:
             await client.command('page pageWrong')
@@ -96,7 +96,7 @@ async def checkPassport(path, camera):
         GPIO.output(17, GPIO.LOW)
 
         # check internet connection
-        if connect:
+        if connect():
             data = scanMrzWithPi(path)
         else:
             await client.command('page pageWrong')
@@ -187,7 +187,7 @@ async def run():
     await client.command('page 0')
     await asyncio.sleep(1.5)
 
-    if connect:
+    if connect():
         if (await client.get('dp') != 1):
             await client.command('page stb_page')
     else:  # if connect to internet fail!
@@ -200,9 +200,7 @@ async def run():
 
 # main function
 if __name__ == '__main__':
-    netStat = 0
     connect = True
-    netCheck = True
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)

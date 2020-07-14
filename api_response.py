@@ -25,3 +25,10 @@ def getRoom(mytype, value):
 def resetRoom(arr_data):
     res = postAPI('return', arr_data)
     print(res.text)
+
+def connect(host='http://google.com'):
+    try:
+        urllib.request.urlopen(host)  # Python 3.x
+        return True
+    except:
+        return False
