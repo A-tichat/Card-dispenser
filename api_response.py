@@ -44,7 +44,6 @@ def sendName(name):
         print(lname)
     return dataRoom
 
-
 def connect(host='http://google.com'):
     try:
         urllib.request.urlopen(host)  # Python 3.x
