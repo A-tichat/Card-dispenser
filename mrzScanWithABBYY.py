@@ -10,7 +10,6 @@ from ABBYY import CloudOCR
 def mrz_scan(source_file, APPID, PWD):
     if (os.path.isfile(source_file) == False):
         raise Exception("file error.")
-
     ocr_engine = CloudOCR(APPID, PWD)
     input_file = open(source_file, 'rb')
     post_file = {input_file.name: input_file}
