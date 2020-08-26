@@ -3,8 +3,8 @@ import logging
 import os
 import random
 import time
-import threading
 import re
+import socket
 
 import pytesseract
 import RPi.GPIO as GPIO
@@ -19,13 +19,22 @@ from mrzScanWithABBYY import scanMrzWithPi
 from thaiId import cardScan
 from api_response import *
 
+
+async def change_stat():
+    global myconnect
+    myconnect=not myconnect
+    if myconnect:
+        await client.command("stb_page.status.pic=17")
+    else:
+        await client.command("stb_page.status.pic=16")
+
+
 # this function will receive PIN-code from nextion display
 # then check to server get room_number and slot
 # then match slot to stm32 address and send many slot to stm32
-
-
 async def checkKey():
     try:
+        global client
         getkey = await client.get('t0.txt')
         await client.command('page waiting_page')
         PIN = re.sub(' ', '', getkey)
@@ -35,8 +44,8 @@ async def checkKey():
             rooms = getRoom('password', PIN)
         else:
             await client.command('page pageWrong')
-            await client.set('p6_t0', "Can't connect to internet")
-            await client.set('p6_t1', "Make sure this device connect to internet correctly")
+            await client.set('p6_t0.txt', "Can't connect to internet")
+            await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
 
         # check pin correct
@@ -53,23 +62,11 @@ async def checkKey():
 
 # this function prepare for read mrz in passport
 async def scanPassport():
-    pathfile = getFilePath()
-    camera = PiCamera()
-    camera.resolution = (1024, 768)
-    # camera.start_preview()
-    await checkPassport(pathfile, camera)
-    # camera.stop_preview()
-    GPIO.output(17, GPIO.LOW)
-    camera.close()
-
-
-# this function will loop until has passport in readBox
-# then scan personal number in passport data
-# then check that to server get number room
-# then send key slot to stm32
-async def checkPassport(path, camera):
-    global client
     try:
+        path = getFilePath()
+        camera = PiCamera()
+        camera.resolution = (1024, 768)
+        global client
         GPIO.output(17, GPIO.HIGH)
         noPP = True
         while noPP:
@@ -91,8 +88,8 @@ async def checkPassport(path, camera):
             data = scanMrzWithPi(path)
         else:
             await client.command('page pageWrong')
-            await client.set('p6_t0', "Can't connect to internet")
-            await client.set('p6_t1', "Make sure this device connect to internet correctly")
+            await client.set('p6_t0.txt', "Can't connect to internet")
+            await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
         personNum = data.personalNum.replace("<", "")
 
@@ -114,20 +111,20 @@ async def checkPassport(path, camera):
         print(e)
     except ValueError:
         await client.command('page pageWrong')
-
-
-async def scanId():
-    global client
-    await client.command('page idScan')
-    await findId()
+    finally:
+        camera.close()
 
 
 async def findId():
     global client
     try:
-        temp = cardScan()
-        print(temp)
-        rooms = getRoom('cid', temp.cid)
+        tempThaiId = cardScan()
+        print(tempThaiId)
+        rooms = getRoom('cid', tempThaiId.cid)
+        if not rooms:
+            rooms = sendName(tempThaiId.thfullname)
+            if not rooms:
+                rooms = sendName(tempThaiId.enfullname)
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
@@ -144,7 +141,7 @@ async def findId():
     except:
         print("wait for card")
         time.sleep(1)
-        if (await client.get('dp') == 6):
+        if (await client.get('dp') == 10):
             await findId()
     # await client.command('page waitting_page')
 
@@ -154,13 +151,21 @@ def event_handler(type_, data):
     if type_ == EventType.STARTUP:
         print('We have booted up!')
     if type_ == EventType.TOUCH:
-        if (data.page_id == 3 and data.component_id == 42 or data.page_id == 2 and data.component_id == 41):
-            asyncio.create_task(checkKey())
-        elif (data.page_id == 4 and data.component_id == 3):
-            asyncio.create_task(scanPassport())
-        elif (data.page_id == 4 and data.component_id == 2):
-            asyncio.create_task(scanId())
-    logging.info('Data: '+str(data))
+        if (data.page_id == 1):
+            if (data.component_id == 3):
+                asyncio.create_task(change_stat())
+        elif (data.page_id == 2):
+            if (data.component_id == 41):
+                asyncio.create_task(checkKey())
+        elif (data.page_id == 3):
+            if (data.component_id == 42):
+                asyncio.create_task(checkKey())
+        elif (data.page_id == 4):
+            if (data.component_id == 3):
+                asyncio.create_task(scanPassport())
+            elif (data.component_id == 2):
+                asyncio.create_task(findId())
+    # logging.info('Data: '+str(data))
 
 
 # initial nextion function
@@ -176,24 +181,17 @@ async def run():
     await client.command('page 0')
     await asyncio.sleep(1.5)
 
-    if connect():
-        if (await client.get('dp') != 1):
-            await client.command('page stb_page')
-    else:  # if connect to internet fail!
-        await client.command('page pageWrong')
-        await client.set('p6_t0', "Can't connect to internet")
-        await client.set('p6_t1', "Make sure this device connect to internet correctly")
-        await client.command('tm0.en=0')
+    if (await client.get('dp') != 1):
+        await client.command('page stb_page')
     print('finished')
 
 
 # main function
 if __name__ == '__main__':
+    myconnect = True
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
-    GPIO.setup(27, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)
-    GPIO.output(27, GPIO.HIGH)
     logging.basicConfig(
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.DEBUG,
