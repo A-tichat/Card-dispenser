@@ -27,6 +27,7 @@ def resetRoom(arr_data):
     res = postAPI('return', arr_data)
     print(res.text)
 
+#function split customer name
 def sendName(name):
     title = name.index('#')
     name = name[title+1:]
