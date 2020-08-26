@@ -121,10 +121,9 @@ async def findId():
         tempThaiId = cardScan()
         print(tempThaiId)
         rooms = getRoom('cid', tempThaiId.cid)
+        rooms.extend(sendName(tempThaiId.thfullname))
         if not rooms:
-            rooms = sendName(tempThaiId.thfullname)
-            if not rooms:
-                rooms = sendName(tempThaiId.enfullname)
+            rooms.extend(sendName(tempThaiId.enfullname))
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
