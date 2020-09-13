@@ -1,11 +1,16 @@
-คำสั่งถ่ายรูป -t คือ เวลาโชว์ถ้าใส่ 0 คือโชว์ตลอดจนกว่าจะออก(ctrl c)
-	-w กว้าง -h สูง -o ชื่อไฟล์
+//take a pic
+	option:
+		-t following number time(sec) preview 
+			if set 0 show infinite(ctrl c quit)
+		-w following number width
+		-h following number height 
+		-o following image outputname
 raspistill -t 0 -w 1024 -h 768 -o image.jpg
 
-คำสั่งอ่านรูป 	       ใส่ชื่อรูปvvv
+//img -> text
 tesseract image.jpg stdout
 
-สั่งจอ
+//run main command
 cd Card-dispenser
 source bin/activate
 python3 main.py
