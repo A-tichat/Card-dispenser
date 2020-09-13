@@ -14,24 +14,41 @@ from nextion import Nextion, EventType
 from datetime import datetime
 
 import stm32
-from ManageFile import getFilePath
 from mrzScanWithABBYY import scanMrzWithPi
 from thaiId import cardScan
 from api_response import *
 
+picNum = 0
+toDay = 0
+
 
 async def change_stat():
     global myconnect
-    myconnect=not myconnect
+    myconnect = not myconnect
     if myconnect:
         await client.command("stb_page.status.pic=17")
     else:
         await client.command("stb_page.status.pic=16")
 
 
+def getFilePath():
+    global picNum
+    global toDay
+    if not os.path.isdir('./Pictures'):
+        os.mkdir("Pictures")
+    if datetime.today().day > toDay:
+        toDay = datetime.today().day
+        picNum = 1
+    else:
+        picNum += 1
+
+    return "Pictures/"+datetime.today().strftime('%Y%m%d')+"_{0:04d}.jpg".format(picNum)
+
 # this function will receive PIN-code from nextion display
 # then check to server get room_number and slot
 # then match slot to stm32 address and send many slot to stm32
+
+
 async def checkKey():
     try:
         global client
@@ -52,12 +69,11 @@ async def checkKey():
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
-            resetRoom(json_rooms)
+            resetRoom("bookNum", rooms, [])
         else:
             await client.command('page PinWrong')
     except NameError as e:
-        print('checkKey function: ', e)
+        print('checkKey function fail: ', e)
 
 
 # this function prepare for read mrz in passport
@@ -81,6 +97,7 @@ async def scanPassport():
                     noPP = False
                     break
         await client.command('page passportScan')
+        img.close()
         GPIO.output(17, GPIO.LOW)
 
         # check internet connection
@@ -97,8 +114,7 @@ async def scanPassport():
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
-            resetRoom(json_rooms)
+            resetRoom("passport", rooms, personNum)
         else:
             print("Don't have room")
             await client.command('page pageWrong')
@@ -108,7 +124,7 @@ async def scanPassport():
                 await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
                 time.sleep(1)
     except NameError as e:
-        print(e)
+        print('scanPassport function fail: ', e)
     except ValueError:
         await client.command('page pageWrong')
     finally:
@@ -119,16 +135,16 @@ async def findId():
     global client
     try:
         tempThaiId = cardScan()
-        print(tempThaiId)
-        rooms = getRoom('cid', tempThaiId.cid)
-        rooms.extend(sendName(tempThaiId.thfullname))
+        # print(tempThaiId)
+        rooms = list()
+        rooms.extend(getRoomFromName(tempThaiId.thfullname))
         if not rooms:
-            rooms.extend(sendName(tempThaiId.enfullname))
+            rooms.extend(getRoomFromName(tempThaiId.enfullname))
+        rooms.extend(getRoom('cid', tempThaiId.cid))
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            json_rooms = list(map(lambda x: {'slot': x['slot']}, rooms))
-            resetRoom(json_rooms)
+            resetRoom("id_card", rooms, tempThaiId.cid)
         else:
             print("Don't have room")
             await client.command('page pageWrong')
@@ -138,7 +154,7 @@ async def findId():
                 await client.set('p6_tcount.txt', "This page will close in %d seconds." % i)
                 time.sleep(1)
     except:
-        print("wait for card")
+        # print("wait for card")
         time.sleep(1)
         if (await client.get('dp') == 10):
             await findId()
@@ -182,8 +198,7 @@ async def run():
 
     if (await client.get('dp') != 1):
         await client.command('page stb_page')
-    print('finished')
-
+    print('Boot process finished!')
 
 # main function
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 
-def getFilePath():
+def getFilePath_default():
     try:
         last_name = os.listdir("Pictures")[-1][-8:-4]
     except:
@@ -14,8 +14,13 @@ def getFilePath():
         fz.close()
         last_name = os.listdir("Pictures")[-1][-8:-4]
     finally:
-        n = int(last_name)+1
-        num = str(n)
+        num = str(last_name)
         while len(num) < 4:
             num = '0'+num
         return ("Pictures/"+datetime.today().strftime('%Y%m%d')+"_%s.jpg" % num)
+
+
+def getFilePath():
+    if not os.path.isdir('./Pictures'):
+        os.mkdir("Pictures")
+    return "Pictures/"+datetime.today().strftime('%Y%m%d')
