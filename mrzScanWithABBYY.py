@@ -35,6 +35,6 @@ def scanMrzWithPi(pathImg="Pictures/"+datetime.today().strftime('%Y%m%d')+".jpg"
     p1 = passportScan(code)
 
     # if scan pass
-    p1.printResult()
+    p1.detail()
     # print(p1.__dict__)
     return p1
