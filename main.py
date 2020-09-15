@@ -114,7 +114,7 @@ async def scanPassport():
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            resetRoom("passport", rooms, personNum)
+            resetRoom("passport", rooms, personNum, path)
         else:
             print("Don't have room")
             await client.command('page pageWrong')

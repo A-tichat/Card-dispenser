@@ -1,6 +1,7 @@
 import requests
 import json
 import urllib.request
+import os
 
 
 def postAPI(action, json_body):
@@ -23,15 +24,17 @@ def getRoom(mytype, value):
     return json.loads(postAPI('check', json_data))
 
 
-def resetRoom(data_type, rooms, data):
+def resetRoom(data_type, rooms, data, pathImg=""):
     slots = list()
     for i in rooms:
         slots.append({"slot": i['slot']})
     res = postAPI('return', slots)
     if (data_type == "id_card"):
-        postImg(bookNum=rooms[0]["customer_booking"], cardId=data)
+        postImg(bookNum=rooms[0]["customer_booking"],
+                cardId=data)
     if (data_type == "passport"):
-        postImg(bookNum=rooms[0]["customer_booking"], passportId=data)
+        postImg(bookNum=rooms[0]["customer_booking"],
+                passportId=data, path=pathImg)
     # print(res)
 
 # function split customer name
@@ -54,16 +57,18 @@ def getRoomFromName(name):
     return dataRoom
 
 
-def postImg(bookNum="", cardId="", passportId=""):
+def postImg(bookNum="", cardId="", passportId="", path=""):
     try:
-        uploadUrl = "http://kds.nellehliving.com/passport/"
-        img_file = open('Picture/passport_simple.png', 'rb')
-        cus_img = {'img_passport': img_file}
-        cus_data = {'booking_number': bookNum,
-                    "passport": passportId, 'id_card': cardId}
-        response = requests.post(uploadUrl, data=cus_data, files=cus_img)
-        # print(response.text)
-        img_file.close
+        if path:
+            img_file = open(path, 'rb')
+            uploadUrl = "http://kds.nellehliving.com/passport/"
+            cus_img = {'img_passport': img_file}
+            cus_data = {'booking_number': bookNum,
+                        "passport": passportId, 'id_card': cardId}
+            response = requests.post(uploadUrl, data=cus_data, files=cus_img)
+            # print(response.text)
+            img_file.close()
+            os.remove(path)
     except Exception as e:
         img_file.close()
         print("fail", e)

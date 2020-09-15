@@ -41,7 +41,7 @@ def imgProcessing(path):
 def mrzScan(pathImg):
     code = imgProcessing(pathImg)
     p1 = passportScan(code)
-    os.remove(pathImg)
+    # os.remove(pathImg)
 
     # if scan pass
     p1.detail()
