@@ -14,7 +14,7 @@ from nextion import Nextion, EventType
 from datetime import datetime
 
 import stm32
-from mrzScanWithABBYY import scanMrzWithPi
+from googleOCR import mrzScan
 from thaiId import cardScan
 from api_response import *
 
@@ -42,7 +42,7 @@ def getFilePath():
     else:
         picNum += 1
 
-    return "Pictures/"+datetime.today().strftime('%Y%m%d')+"_{0:04d}.jpg".format(picNum)
+    return "Pictures/"+datetime.today().strftime('%Y%m%d')+"_{0:04d}.png".format(picNum)
 
 # this function will receive PIN-code from nextion display
 # then check to server get room_number and slot
@@ -102,7 +102,7 @@ async def scanPassport():
 
         # check internet connection
         if connect():
-            data = scanMrzWithPi(path)
+            data = mrzScan(path)
         else:
             await client.command('page pageWrong')
             await client.set('p6_t0.txt', "Can't connect to internet")
