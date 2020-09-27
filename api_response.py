@@ -1,6 +1,5 @@
 import requests
 import json
-import urllib.request
 import os
 
 
@@ -31,7 +30,7 @@ def resetRoom(data_type, rooms, data, pathImg=""):
     res = postAPI('return', slots)
     if (data_type == "id_card"):
         postImg(bookNum=rooms[0]["customer_booking"],
-                cardId=data)
+                cardId=data, path=pathImg)
     if (data_type == "passport"):
         postImg(bookNum=rooms[0]["customer_booking"],
                 passportId=data, path=pathImg)
@@ -69,14 +68,11 @@ def postImg(bookNum="", cardId="", passportId="", path=""):
             # print(response.text)
             img_file.close()
             os.remove(path)
+        else:
+            uploadUrl = "http://kds.nellehliving.com/passport/"
+            cus_data = {'booking_number': bookNum, 'id_card': cardId}
+            response = requests.post(uploadUrl, data=cus_data, files=cus_img)
     except Exception as e:
-        img_file.close()
+        if path:
+            img_file.close()
         print("fail", e)
-
-
-def connect(host='http://google.com'):
-    try:
-        urllib.request.urlopen(host)  # Python 3.x
-        return True
-    except:
-        return False

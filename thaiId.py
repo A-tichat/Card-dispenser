@@ -85,6 +85,7 @@ CMD_PHOTO19 = [0x80, 0xb0, 0x13, 0x69, 0x02, 0x00, 0xFF]
 CMD_PHOTO20 = [0x80, 0xb0, 0x14, 0x68, 0x02, 0x00, 0xFF]
 connection = readers()[0].createConnection()
 
+
 class cardScan:
     def __init__(self):
         connection.connect()
@@ -108,6 +109,31 @@ class cardScan:
         self.issuedate = thai2unicode(getData(CMD_ISSUE, req)[0])
         self.expire = thai2unicode(getData(CMD_EXPIRE, req)[0])
         self.addr = thai2unicode(getData(CMD_ADDRESS, req)[0])
+        photo = getData(CMD_PHOTO1, req)[0]
+        photo += getData(CMD_PHOTO2, req)[0]
+        photo += getData(CMD_PHOTO3, req)[0]
+        photo += getData(CMD_PHOTO4, req)[0]
+        photo += getData(CMD_PHOTO5, req)[0]
+        photo += getData(CMD_PHOTO6, req)[0]
+        photo += getData(CMD_PHOTO7, req)[0]
+        photo += getData(CMD_PHOTO8, req)[0]
+        photo += getData(CMD_PHOTO9, req)[0]
+        photo += getData(CMD_PHOTO10, req)[0]
+        photo += getData(CMD_PHOTO11, req)[0]
+        photo += getData(CMD_PHOTO12, req)[0]
+        photo += getData(CMD_PHOTO13, req)[0]
+        photo += getData(CMD_PHOTO14, req)[0]
+        photo += getData(CMD_PHOTO15, req)[0]
+        photo += getData(CMD_PHOTO16, req)[0]
+        photo += getData(CMD_PHOTO17, req)[0]
+        photo += getData(CMD_PHOTO18, req)[0]
+        photo += getData(CMD_PHOTO19, req)[0]
+        photo += getData(CMD_PHOTO20, req)[0]
+        data = HexListToBinString(photo)
+        self.photo = data
+        f = open("{}.jpg".format(self.cid[-4:]), "wb")
+        f.write(data)
+        f.close
 
     def __str__(self):
         return "Card info[cid={}, thfullname={}, enfullname={}, birth={}, gender={}, issuer={}, issuedate={}, expire={}, addr={}]".format(
