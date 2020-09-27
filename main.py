@@ -69,7 +69,7 @@ async def checkKey():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            change_wifi_stat(network_connection)
+            await change_wifi_stat(network_connection)
             InternetMonitor(1, network_connection, change_wifi_stat())
 
         if rooms:
@@ -105,7 +105,7 @@ async def scanPassport():
                 if '<' in d:
                     noPP = False
                     break
-        await client.command('page passportScan')
+        await client.command('page waiting_page')
         GPIO.output(17, GPIO.LOW)
 
         # check internet connection
@@ -117,7 +117,7 @@ async def scanPassport():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            change_wifi_stat(network_connection)
+            await change_wifi_stat(network_connection)
             InternetMonitor(1, network_connection, change_wifi_stat())
 
         rooms = getRoom('cid', data.personalNum)
@@ -154,7 +154,7 @@ async def findId():
         tempThaiId = cardScan()
         # print(tempThaiId)
         rooms = list()
-
+        await client.command('page waiting_page')
         # check internet connection
         checkNet(network_connection)
         if network_connection["status"]:
@@ -167,7 +167,7 @@ async def findId():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            change_wifi_stat(network_connection)
+            await change_wifi_stat(network_connection)
             InternetMonitor(1, network_connection, change_wifi_stat())
 
         if rooms:
@@ -198,6 +198,7 @@ def event_handler(type_, data):
     if type_ == EventType.TOUCH:
         if (data.page_id == 1):
             if (data.component_id == 3):
+                checkNet(network_connection)
                 asyncio.create_task(change_wifi_stat())
         elif (data.page_id == 2):
             if (data.component_id == 41):
@@ -228,7 +229,7 @@ async def run():
 
     checkNet(network_connection)
     if not network_connection["status"]:
-        change_wifi_stat(network_connection)
+        await change_wifi_stat(network_connection)
         InternetMonitor(1, network_connection, change_wifi_stat())
     if (await client.get('dp') != 1):
         await client.command('page stb_page')
