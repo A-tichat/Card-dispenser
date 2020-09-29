@@ -4,5 +4,6 @@
 
 cd /
 cd home/pi/Card-dispenser
-sudo python3 main.py
+export GOOGLE_APPLICATION_CREDENTIALS="/home/pi/authenFile/key_dispenser-75e647798c48.json"
+python3 main.py
 cd /

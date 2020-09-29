@@ -6,7 +6,7 @@ class passportScan:
         if (len(data) > 88):
             data = data.replace(' ', '')
         firstline = data[:44]
-        secoundline = data[44:]
+        secoundline = data[-44:]
         # to check type of passport
         if (firstline[0] != "P"):
             raise ValueError("There is another type")
