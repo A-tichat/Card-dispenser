@@ -11,28 +11,22 @@ from urllib.request import urlopen
 
 
 def checkNet(network):
-    for timeout in [1, 5, 10, 15]:
-        try:
+    try:
+        for timeout in [1, 5, 10, 15]:
             response = urlopen('http://google.com', timeout=timeout)
-            if network["status"]:
-                network["status"] = True
-                network["isChange"] = False
-            else:
-                network["status"] = True
-                network["isChange"] = True
-        except:
-            if network["status"]:
-                network["status"] = False
-                network["isChange"] = True
-            else:
-                network["status"] = False
-                network["isChange"] = False
-    if network["status"]:
-        network["status"] = False
-        network["isChange"] = True
-    else:
-        network["status"] = False
-        network["isChange"] = False
+        if network["status"]:
+            network["status"] = True
+            network["isChange"] = False
+        else:
+            network["status"] = True
+            network["isChange"] = True
+    except:
+        if network["status"]:
+            network["status"] = False
+            network["isChange"] = True
+        else:
+            network["status"] = False
+            network["isChange"] = False
 
 
 class InternetMonitor(threading.Thread):
@@ -41,7 +35,6 @@ class InternetMonitor(threading.Thread):
         self.internet = network
         self.network_fail = True
         self.interval_secs = interval_secs
-        self.icon_ticker = func_ticker
         self.checkingServer = 'http://google.com'
         self.start()
 
@@ -64,5 +57,4 @@ class InternetMonitor(threading.Thread):
             except:
                 print("Inet \t ----------- Error -------------")
                 continue
-        asyncio.create_task(self.icon_ticker())
         # print("Done")

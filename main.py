@@ -20,6 +20,8 @@ from googleOCR import mrzScan
 from thaiId import cardScan
 from api_response import *
 from status_internet import *
+
+network_connection = {"status": True, "isChange": False}
 picNum = 0
 toDay = 0
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/home/pi/authenFile/key_dispenser-75e647798c48.json"
@@ -39,10 +41,10 @@ def getFilePath():
     return "Pictures/"+datetime.today().strftime('%Y%m%d')+"_{0:04d}.png".format(picNum)
 
 
-async def change_wifi_stat(network):
-    if network["isChange"]:
-        network["isChange"] = False
-        if network["status"]:
+async def change_wifi_stat():
+    if network_connection["isChange"]:
+        network_connection["isChange"] = False
+        if network_connection["status"]:
             await client.command("stb_page.status.pic=17")
         else:
             await client.command("stb_page.status.pic=16")
@@ -68,8 +70,8 @@ async def checkKey():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            await change_wifi_stat(network_connection)
-            InternetMonitor(1, network_connection, change_wifi_stat())
+            await change_wifi_stat()
+            InternetMonitor(1, network_connection, change_wifi_stat)
 
         if rooms:
             stm32.sendSlot(rooms)
@@ -116,8 +118,8 @@ async def scanPassport():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            await change_wifi_stat(network_connection)
-            InternetMonitor(1, network_connection, change_wifi_stat())
+            await change_wifi_stat()
+            InternetMonitor(1, network_connection, change_wifi_stat)
 
         rooms = getRoom('cid', data.personalNum)
         if rooms:
@@ -140,7 +142,7 @@ async def scanPassport():
         await client.command('page pageWrong')
     finally:
         GPIO.output(17, GPIO.LOW)
-        if os.exits(path):
+        if os.exists(path):
             img.close()
         camera.close()
 
@@ -169,8 +171,8 @@ async def findId():
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-            await change_wifi_stat(network_connection)
-            InternetMonitor(1, network_connection, change_wifi_stat())
+            await change_wifi_stat()
+            InternetMonitor(1, network_connection, change_wifi_stat)
 
         if rooms:
             stm32.sendSlot(rooms)
@@ -219,7 +221,7 @@ def event_handler(type_, data):
 # initial nextion function
 async def run():
     global client
-    client = Nextion('/dev/ttyAMA0', 115200, event_handler)
+    client = Nextion('/dev/ttyAMA0', 9600, event_handler)
     await client.connect()
 
     # await client.sleep()
@@ -231,15 +233,14 @@ async def run():
 
     checkNet(network_connection)
     if not network_connection["status"]:
-        await change_wifi_stat(network_connection)
-        InternetMonitor(1, network_connection, change_wifi_stat())
+        await change_wifi_stat()
+        InternetMonitor(1, network_connection, change_wifi_stat)
     if (await client.get('dp') != 1):
         await client.command('page stb_page')
     print('Boot process finished!')
 
 # main function
 if __name__ == '__main__':
-    network_connection = {"status": True, "isChange": False}
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)
