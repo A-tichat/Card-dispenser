@@ -1,36 +1,30 @@
+#!/usr/bin/python3
+# Default library import
 import asyncio
 import logging
 import os
-import random
 import time
 import re
-import socket
 
+# Installed library import
+from datetime import datetime
 import pytesseract
 import RPi.GPIO as GPIO
 from picamera import PiCamera
 from PIL import Image
 from nextion import Nextion, EventType
-from datetime import datetime
 
+# My library import
 import stm32
 from googleOCR import mrzScan
 from thaiId import cardScan
 from api_response import *
-
+from status_internet import *
 picNum = 0
 toDay = 0
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/home/pi/authenFile/key_dispenser-75e647798c48.json"
 
-async def change_stat():
-    global myconnect
-    myconnect = not myconnect
-    if myconnect:
-        await client.command("stb_page.status.pic=17")
-    else:
-        await client.command("stb_page.status.pic=16")
-
-
+# create passport photo path
 def getFilePath():
     global picNum
     global toDay
@@ -44,8 +38,17 @@ def getFilePath():
 
     return "Pictures/"+datetime.today().strftime('%Y%m%d')+"_{0:04d}.png".format(picNum)
 
-# this function will receive PIN-code from nextion display
-# then check to server get room_number and slot
+
+async def change_wifi_stat(network):
+    if network["isChange"]:
+        network["isChange"] = False
+        if network["status"]:
+            await client.command("stb_page.status.pic=17")
+        else:
+            await client.command("stb_page.status.pic=16")
+
+# start when receive PIN-code from display
+# it will connect server to get room_number and slot
 # then match slot to stm32 address and send many slot to stm32
 
 
@@ -57,15 +60,17 @@ async def checkKey():
         PIN = re.sub(' ', '', getkey)
 
         # check internet connection
-        if connect() and PIN:
+        checkNet(network_connection)
+        if network_connection["status"] and PIN:
             rooms = getRoom('password', PIN)
         else:
             await client.command('page pageWrong')
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
+            await change_wifi_stat(network_connection)
+            InternetMonitor(1, network_connection, change_wifi_stat())
 
-        # check pin correct
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
@@ -76,11 +81,14 @@ async def checkKey():
         print('checkKey function fail: ', e)
 
 
-# this function prepare for read mrz in passport
+# start when display into passport scan page
+# it will check has passport then capture img and decode
+# if passport correct it will connect server to check and get booking_number and slot
+# then match slot to stm32 address and send many slot to stm32
 async def scanPassport():
+    camera = PiCamera()
     try:
         path = getFilePath()
-        camera = PiCamera()
         camera.resolution = (1024, 768)
         global client
         GPIO.output(17, GPIO.HIGH)
@@ -96,24 +104,27 @@ async def scanPassport():
                 if '<' in d:
                     noPP = False
                     break
+        await client.command('page waiting_page')
         GPIO.output(17, GPIO.LOW)
 
         # check internet connection
-        if connect():
+        checkNet(network_connection)
+        if network_connection["status"]:
             data = mrzScan(path)
         else:
             await client.command('page pageWrong')
             await client.set('p6_t0.txt', "Can't connect to internet")
             await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
             await client.command('tm0.en=0')
-        personNum = data.personalNum.replace("<", "")
+            await change_wifi_stat(network_connection)
+            InternetMonitor(1, network_connection, change_wifi_stat())
 
-        rooms = getRoom('cid', personNum)
+        rooms = getRoom('cid', data.personalNum)
         if rooms:
             stm32.sendSlot(rooms)
             GPIO.output(17, GPIO.LOW)
             await client.command('page shRoom')
-            resetRoom("passport", rooms, personNum, path)
+            resetRoom("passport", rooms, data.personalNum, path)
         else:
             print("Don't have room")
             GPIO.output(17, GPIO.LOW)
@@ -129,7 +140,14 @@ async def scanPassport():
         await client.command('page pageWrong')
     finally:
         GPIO.output(17, GPIO.LOW)
+        if os.exits(path):
+            img.close()
         camera.close()
+
+# start when display into thai-id scan page
+# it will check has thai-id for secound then decode data from card
+# it will connect server to check and get booking_number and slot
+# then match slot to stm32 address and send many slot to stm32
 
 
 async def findId():
@@ -138,16 +156,29 @@ async def findId():
         tempThaiId = cardScan()
         # print(tempThaiId)
         rooms = list()
-        rooms.extend(getRoomFromName(tempThaiId.thfullname))
-        if not rooms:
-            rooms.extend(getRoomFromName(tempThaiId.enfullname))
-        rooms.extend(getRoom('cid', tempThaiId.cid))
+        await client.command('page waiting_page')
+        # check internet connection
+        checkNet(network_connection)
+        if network_connection["status"]:
+            rooms.extend(getRoomFromName(tempThaiId.thfullname))
+            if not rooms:
+                rooms.extend(getRoomFromName(tempThaiId.enfullname))
+            rooms.extend(getRoom('cid', tempThaiId.cid))
+        else:
+            await client.command('page pageWrong')
+            await client.set('p6_t0.txt', "Can't connect to internet")
+            await client.set('p6_t1.txt', "Make sure this device connect to internet correctly")
+            await client.command('tm0.en=0')
+            await change_wifi_stat(network_connection)
+            InternetMonitor(1, network_connection, change_wifi_stat())
+
         if rooms:
             stm32.sendSlot(rooms)
             await client.command('page shRoom')
-            resetRoom("id_card", rooms, tempThaiId.cid)
+            resetRoom("id_card", rooms, tempThaiId.cid,
+                      "{}.jpg".format(tempThaiId.cid[-4:]))
         else:
-            print("Don't have room")
+            print("Not found room")
             await client.command('page pageWrong')
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
@@ -159,7 +190,7 @@ async def findId():
         time.sleep(1)
         if (await client.get('dp') == 10):
             await findId()
-    # await client.command('page waitting_page')
+        # await client.command('page waitting_page')
 
 
 # this function get event from nextion screen
@@ -169,7 +200,8 @@ def event_handler(type_, data):
     if type_ == EventType.TOUCH:
         if (data.page_id == 1):
             if (data.component_id == 3):
-                asyncio.create_task(change_stat())
+                checkNet(network_connection)
+                asyncio.create_task(change_wifi_stat())
         elif (data.page_id == 2):
             if (data.component_id == 41):
                 asyncio.create_task(checkKey())
@@ -197,13 +229,17 @@ async def run():
     await client.command('page 0')
     await asyncio.sleep(1.5)
 
+    checkNet(network_connection)
+    if not network_connection["status"]:
+        await change_wifi_stat(network_connection)
+        InternetMonitor(1, network_connection, change_wifi_stat())
     if (await client.get('dp') != 1):
         await client.command('page stb_page')
     print('Boot process finished!')
 
 # main function
 if __name__ == '__main__':
-    myconnect = True
+    network_connection = {"status": True, "isChange": False}
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)
