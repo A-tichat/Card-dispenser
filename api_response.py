@@ -67,10 +67,8 @@ def postImg(bookNum="", cardId="", passportId="", path=""):
                         "passport": passportId, 'id_card': cardId}
             response = requests.post(uploadUrl, data=cus_data, files=cus_img)
             # print(response.text)
-            img_file.close()
             os.remove(path)
     except Exception as e:
-        img_file.close()
         print("fail", e)
 
 

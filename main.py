@@ -20,7 +20,7 @@ from api_response import *
 
 picNum = 0
 toDay = 0
-
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="/home/pi/authenFile/key_dispenser-75e647798c48.json"
 
 async def change_stat():
     global myconnect
@@ -96,8 +96,6 @@ async def scanPassport():
                 if '<' in d:
                     noPP = False
                     break
-        await client.command('page passportScan')
-        img.close()
         GPIO.output(17, GPIO.LOW)
 
         # check internet connection
@@ -113,10 +111,12 @@ async def scanPassport():
         rooms = getRoom('cid', personNum)
         if rooms:
             stm32.sendSlot(rooms)
+            GPIO.output(17, GPIO.LOW)
             await client.command('page shRoom')
             resetRoom("passport", rooms, personNum, path)
         else:
             print("Don't have room")
+            GPIO.output(17, GPIO.LOW)
             await client.command('page pageWrong')
             for i in range(10, 0, -1):
                 if (await client.get('dp') != 6):
@@ -128,6 +128,7 @@ async def scanPassport():
     except ValueError:
         await client.command('page pageWrong')
     finally:
+        GPIO.output(17, GPIO.LOW)
         camera.close()
 
 
@@ -186,7 +187,7 @@ def event_handler(type_, data):
 # initial nextion function
 async def run():
     global client
-    client = Nextion('/dev/ttyAMA0', 9600, event_handler)
+    client = Nextion('/dev/ttyAMA0', 115200, event_handler)
     await client.connect()
 
     # await client.sleep()

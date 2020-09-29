@@ -14,7 +14,7 @@ def imgProcessing(path):
 
     im = Image.open(path)
     width, height = im.size
-    roiImg = im.crop((0, 11*height/16, width, height))
+    roiImg = im.crop((0, 10*height/16, width, height))
     roiImg.show()
     imgByteArr = io.BytesIO()
     roiImg.save(imgByteArr, format='PNG')
